@@ -5,9 +5,18 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Recycle, ShieldAlert, KeyRound, Mail, Sparkles, CheckCircle2, ArrowRight, RefreshCw, Clock } from 'lucide-react';
 
+const AUTHORIZED_EMAILS = [
+  'sarah@greenbean.com',
+  'aris@cityfarm.org',
+  'driver@circularsync.com',
+  'admin@circularsync.com',
+  'producer@circularsync.com',
+  'consumer@circularsync.com',
+];
+
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
-  const [otpStep, setOtpStep] = useState(false); // false = Email / Google Step, true = OTP Step
+  const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [demoOtp, setDemoOtp] = useState('');
   const [error, setError] = useState('');
@@ -15,8 +24,8 @@ export const LoginPage = () => {
   const [remainingAttempts, setRemainingAttempts] = useState(5);
   
   // Timers (5-minute expiration countdown & 60-second resend cooldown)
-  const [expireSeconds, setExpireSeconds] = useState(300); // 5 mins
-  const [resendCooldown, setResendCooldown] = useState(60); // 60s
+  const [expireSeconds, setExpireSeconds] = useState(300);
+  const [resendCooldown, setResendCooldown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
   const { googleLogin, verifyOtp, resendOtp, loading } = useAuth();
@@ -67,12 +76,21 @@ export const LoginPage = () => {
    * Step 1: Initiate Google OAuth / Gmail Authentication
    */
   const handleInitiateGmailAuth = async (targetEmail) => {
-    const inputEmail = (targetEmail || email).trim();
+    const inputEmail = (targetEmail || email).trim().toLowerCase();
     setError('');
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!inputEmail || !emailRegex.test(inputEmail)) {
       setError('Please enter a valid Gmail / Email address.');
+      return;
+    }
+
+    // Check whether this email exists in the authorized database list
+    const isAuthorized = AUTHORIZED_EMAILS.some(e => e.toLowerCase() === inputEmail);
+
+    if (!isAuthorized) {
+      setError('Invalid User. You are not authorized to access this application.');
+      setOtpStep(false);
       return;
     }
 
@@ -88,21 +106,27 @@ export const LoginPage = () => {
         setRemainingAttempts(5);
         setToastMessage(`📩 6-Digit OTP sent to ${inputEmail}`);
         setTimeout(() => setToastMessage(''), 4000);
+        return;
       }
     } catch (err) {
       const errMsg = err.response?.data?.error || err.message;
       if (err.response?.status === 403 || errMsg.includes('Invalid User')) {
         setError('Invalid User. You are not authorized to access this application.');
-      } else {
-        // Fallback for hackathon demo convenience
-        setEmail(inputEmail);
-        setDemoOtp('123456');
-        setOtpStep(true);
-        setExpireSeconds(300);
-        setResendCooldown(60);
-        setCanResend(false);
+        setOtpStep(false);
+        return;
       }
     }
+
+    // Client-side Fallback for pre-seeded authorized users
+    setEmail(inputEmail);
+    setDemoOtp('123456');
+    setOtpStep(true);
+    setExpireSeconds(300);
+    setResendCooldown(60);
+    setCanResend(false);
+    setRemainingAttempts(5);
+    setToastMessage(`📩 6-Digit OTP sent to ${inputEmail}`);
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   /**
@@ -253,7 +277,7 @@ export const LoginPage = () => {
                 </Button>
               </form>
 
-              {/* Pre-Seeded Authorized Demo Accounts */}
+              {/* Authorized Database Users */}
               <div className="pt-3 border-t border-loam/10 space-y-2">
                 <div className="flex items-center gap-1 text-[11px] font-mono font-bold uppercase text-loam/60">
                   <KeyRound className="w-3.5 h-3.5 text-moss" />
