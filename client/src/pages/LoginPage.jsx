@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Recycle, ShieldAlert, KeyRound, Mail, Sparkles, CheckCircle2, ArrowRight, RefreshCw, Clock } from 'lucide-react';
+import { Recycle, ShieldAlert, KeyRound, Mail, Sparkles, CheckCircle2, ArrowRight, RefreshCw, Clock, LogOut } from 'lucide-react';
 
 const AUTHORIZED_EMAILS = [
   'sarah@greenbean.com',
@@ -15,6 +15,9 @@ const AUTHORIZED_EMAILS = [
 ];
 
 export const LoginPage = () => {
+  const { user, logout, googleLogin, verifyOtp, resendOtp, loading } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -28,15 +31,13 @@ export const LoginPage = () => {
   const [resendCooldown, setResendCooldown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  const { googleLogin, verifyOtp, resendOtp, loading } = useAuth();
-  const navigate = useNavigate();
-
-  const sampleAccounts = [
-    { role: 'PRODUCER', email: 'sarah@greenbean.com', name: 'Waste Producer (GreenBean Cafe)' },
-    { role: 'CONSUMER', email: 'aris@cityfarm.org', name: 'Resource Consumer (City Farm)' },
-    { role: 'LOGISTICS', email: 'driver@circularsync.com', name: 'Logistics Partner (Driver)' },
-    { role: 'ADMIN', email: 'admin@circularsync.com', name: 'Community Manager (Admin)' },
-  ];
+  // If already logged in, show active session option to sign out and test
+  const handleSignOutToTest = () => {
+    logout();
+    setOtpStep(false);
+    setEmail('');
+    setError('');
+  };
 
   // 5-minute Countdown Timer
   useEffect(() => {
@@ -75,13 +76,13 @@ export const LoginPage = () => {
   /**
    * Step 1: Initiate Google OAuth / Gmail Authentication
    */
-  const handleInitiateGmailAuth = async (targetEmail) => {
-    const inputEmail = (targetEmail || email).trim().toLowerCase();
+  const handleInitiateGmailAuth = async (inputEmailParam) => {
+    const inputEmail = (inputEmailParam || email).trim().toLowerCase();
     setError('');
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!inputEmail || !emailRegex.test(inputEmail)) {
-      setError('Please enter a valid Gmail / Email address.');
+      setError('Please enter a valid Gmail / Email address (e.g. sarah@greenbean.com).');
       return;
     }
 
@@ -137,7 +138,7 @@ export const LoginPage = () => {
     setError('');
 
     if (!otpCode || otpCode.trim().length !== 6) {
-      setError('Please enter a 6-digit OTP code.');
+      setError('Please enter the 6-digit OTP code sent to your email.');
       return;
     }
 
@@ -208,6 +209,23 @@ export const LoginPage = () => {
           </p>
         </div>
 
+        {/* If Active Session Exists: Option to clear & test */}
+        {user && (
+          <div className="p-3 bg-mycelium border border-loam/15 rounded-xl flex items-center justify-between text-xs font-mono">
+            <div className="truncate">
+              <span className="text-loam/60">Signed in as: </span>
+              <strong className="text-moss">{user.email}</strong>
+            </div>
+            <button
+              onClick={handleSignOutToTest}
+              className="px-2.5 py-1 rounded bg-rust/10 text-rust-deep font-bold flex items-center gap-1 hover:bg-rust/20 shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out to Test</span>
+            </button>
+          </div>
+        )}
+
         <Card className="p-6 space-y-4">
           
           {/* Error Alert Box */}
@@ -229,37 +247,15 @@ export const LoginPage = () => {
             </div>
           )}
 
-          {/* STEP 1: Enter Gmail or Continue with Google */}
+          {/* STEP 1: Enter Gmail Address */}
           {!otpStep ? (
             <div className="space-y-4">
               
-              {/* Continue with Google OAuth Button */}
-              <button
-                type="button"
-                onClick={() => handleInitiateGmailAuth('sarah@greenbean.com')}
-                disabled={loading}
-                className="w-full py-3 px-4 rounded-lg border border-loam/20 bg-parchment hover:bg-mycelium text-loam font-mono text-xs font-bold flex items-center justify-center gap-3 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-moss"
-              >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
-              <div className="flex items-center my-2">
-                <div className="flex-1 border-t border-loam/15" />
-                <span className="px-3 text-[10px] font-mono uppercase text-loam/50 font-bold">OR ENTER GMAIL</span>
-                <div className="flex-1 border-t border-loam/15" />
-              </div>
-
               <form onSubmit={(e) => { e.preventDefault(); handleInitiateGmailAuth(email); }} className="space-y-4 font-mono text-xs">
                 <div className="space-y-1">
                   <label className="font-semibold text-loam uppercase flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-moss" />
-                    <span>Gmail Address</span>
+                    <span>Enter Gmail Address to Verify</span>
                   </label>
                   <input
                     type="email"
@@ -272,16 +268,38 @@ export const LoginPage = () => {
                 </div>
 
                 <Button type="submit" variant="primary" className="w-full py-2.5 text-xs font-bold gap-2" disabled={loading}>
-                  <span>{loading ? 'Verifying Gmail...' : 'Send 6-Digit OTP'}</span>
+                  <span>{loading ? 'Verifying Gmail in Database...' : 'Send 6-Digit OTP'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </form>
+
+              {/* Continue with Google Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!email) {
+                    setError('Please enter your Gmail address above first to authenticate.');
+                    return;
+                  }
+                  handleInitiateGmailAuth(email);
+                }}
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-lg border border-loam/20 bg-parchment hover:bg-mycelium text-loam font-mono text-xs font-bold flex items-center justify-center gap-3 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-moss"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Continue with Google OAuth</span>
+              </button>
 
               {/* Authorized Database Users */}
               <div className="pt-3 border-t border-loam/10 space-y-2">
                 <div className="flex items-center gap-1 text-[11px] font-mono font-bold uppercase text-loam/60">
                   <KeyRound className="w-3.5 h-3.5 text-moss" />
-                  <span>Authorized Database Users (Click to Login):</span>
+                  <span>Or Select Authorized Database User:</span>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5 font-mono text-xs">
                   {sampleAccounts.map((acc) => (
@@ -291,7 +309,10 @@ export const LoginPage = () => {
                       onClick={() => handleInitiateGmailAuth(acc.email)}
                       className="w-full text-left p-2.5 rounded bg-parchment/80 hover:bg-mycelium border border-loam/15 flex items-center justify-between transition-colors shadow-sm"
                     >
-                      <span className="truncate text-loam font-sans font-medium">{acc.name}</span>
+                      <div>
+                        <div className="text-loam font-sans font-medium">{acc.name}</div>
+                        <div className="text-[10px] text-loam/60">{acc.email}</div>
+                      </div>
                       <span className="text-[10px] text-moss font-bold underline shrink-0 pl-2">Select</span>
                     </button>
                   ))}
@@ -317,7 +338,7 @@ export const LoginPage = () => {
 
                 <div className="text-[10px] text-loam/70 flex items-center justify-between">
                   <span>Demo OTP Code: <code className="bg-parchment px-1.5 py-0.5 rounded font-bold text-loam">{demoOtp}</code></span>
-                  <span>Remaining Attempts: <strong>{remainingAttempts}/5</strong></span>
+                  <span>Attempts Left: <strong>{remainingAttempts}/5</strong></span>
                 </div>
               </div>
 
