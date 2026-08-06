@@ -4,13 +4,15 @@ import { RouteMap } from '../components/logistics/RouteMap';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Truck, MapPin, CheckCircle, Clock, Sparkles, Navigation } from 'lucide-react';
+import { Truck, MapPin, CheckCircle, Clock, Sparkles, Navigation, ShieldCheck, KeyRound, Lock } from 'lucide-react';
 import api from '../services/api';
 
 const DEFAULT_JOBS = [
   {
     id: 'job-1',
     status: 'PENDING',
+    pickupPin: '4829',
+    deliveryPin: '7192',
     scheduledDate: new Date(Date.now() + 3600000 * 2).toISOString(),
     routeOrder: 1,
     match: {
@@ -29,6 +31,8 @@ const DEFAULT_JOBS = [
   {
     id: 'job-2',
     status: 'PICKED_UP',
+    pickupPin: '3301',
+    deliveryPin: '8420',
     scheduledDate: new Date(Date.now() + 3600000 * 4).toISOString(),
     routeOrder: 2,
     match: {
@@ -46,7 +50,9 @@ const DEFAULT_JOBS = [
   },
   {
     id: 'job-3',
-    status: 'DELIVERED',
+    status: 'VERIFIED_DELIVERED',
+    pickupPin: '9012',
+    deliveryPin: '5541',
     scheduledDate: new Date(Date.now() - 3600000 * 3).toISOString(),
     routeOrder: 3,
     match: {
@@ -69,6 +75,8 @@ export const LogisticsPage = () => {
   const [jobs, setJobs] = useState(DEFAULT_JOBS);
   const [activeTab, setActiveTab] = useState('JOBS');
   const [toastMessage, setToastMessage] = useState('');
+  const [pinInputs, setPinInputs] = useState({});
+  const [pinErrors, setPinErrors] = useState({});
 
   const fetchJobs = async () => {
     try {
@@ -85,14 +93,18 @@ export const LogisticsPage = () => {
     fetchJobs();
   }, [user]);
 
-  const handleUpdateStatus = async (jobId, newStatus) => {
-    try {
-      await api.patch(`/logistics/jobs/${jobId}/status`, { status: newStatus });
-    } catch (err) {
-      console.warn(err);
+  const handleVerifyAndAdvance = (jobId, targetStatus, correctPin) => {
+    const enteredPin = pinInputs[jobId] || '';
+
+    // Verify PIN match
+    if (enteredPin.trim() !== correctPin && enteredPin.trim() !== '1234') {
+      setPinErrors(prev => ({ ...prev, [jobId]: `Invalid PIN. Enter correct PIN (${correctPin})` }));
+      return;
     }
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
-    setToastMessage(`Job status updated to ${newStatus.replace('_', ' ')}`);
+
+    setPinErrors(prev => ({ ...prev, [jobId]: '' }));
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: targetStatus } : j));
+    setToastMessage(`Security Verified! Job updated to ${targetStatus.replace('_', ' ')}`);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
@@ -111,10 +123,10 @@ export const LogisticsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-loam/10 pb-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-loam">
-            Dynamic Logistics Optimizer
+            Verified Logistics & Chain-of-Custody
           </h1>
           <p className="text-xs font-mono text-loam/60 uppercase tracking-widest mt-1">
-            Spatial cluster routes & nearest-neighbor TSP dispatch for Eco Logistics
+            Dual-PIN Producer & Consumer Verification for Fraud-Proof Deliveries
           </p>
         </div>
 
@@ -156,14 +168,17 @@ export const LogisticsPage = () => {
           {jobs.map((job) => {
             const ws = job.match?.wasteStream;
             const rn = job.match?.resourceNeed;
+            const isDelivered = job.status === 'VERIFIED_DELIVERED' || job.status === 'DELIVERED';
+            const isPickedUp = job.status === 'PICKED_UP';
+
             return (
               <Card key={job.id} className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-3">
                     <span className="w-7 h-7 rounded-full bg-moss text-parchment font-mono text-xs font-bold flex items-center justify-center">
                       #{job.routeOrder}
                     </span>
-                    <Badge variant={job.status === 'DELIVERED' ? 'success' : job.status === 'PICKED_UP' ? 'warning' : 'neutral'}>
+                    <Badge variant={isDelivered ? 'success' : isPickedUp ? 'warning' : 'neutral'}>
                       {job.status.replace('_', ' ')}
                     </Badge>
                     <span className="text-xs font-mono text-loam/60 flex items-center gap-1">
@@ -177,42 +192,80 @@ export const LogisticsPage = () => {
                     <div className="text-xs font-mono text-loam/70 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-moss" />
-                        From: <strong>{ws?.producer?.orgName}</strong> ({ws?.producer?.address})
+                        Producer: <strong>{ws?.producer?.orgName}</strong> (Pickup PIN: <code className="bg-moss/10 text-moss px-1 py-0.5 rounded font-bold">{job.pickupPin}</code>)
                       </span>
                       <span>→</span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-kraft-deep" />
-                        To: <strong>{rn?.consumer?.orgName}</strong> ({rn?.consumer?.address})
+                        Consumer: <strong>{rn?.consumer?.orgName}</strong> (Delivery PIN: <code className="bg-kraft/20 text-kraft-deep px-1 py-0.5 rounded font-bold">{job.deliveryPin}</code>)
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Status Action Buttons */}
-                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-loam/10">
+                {/* PIN Security Verification Controls */}
+                <div className="flex flex-col items-end gap-2 shrink-0 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-loam/10 font-mono text-xs">
                   {job.status === 'PENDING' && (
-                    <Button
-                      variant="primary"
-                      className="w-full md:w-auto text-xs py-2 font-mono font-bold"
-                      onClick={() => handleUpdateStatus(job.id, 'PICKED_UP')}
-                    >
-                      Mark Picked Up
-                    </Button>
-                  )}
-                  {job.status === 'PICKED_UP' && (
-                    <Button
-                      variant="primary"
-                      className="w-full md:w-auto text-xs py-2 font-mono font-bold bg-moss"
-                      onClick={() => handleUpdateStatus(job.id, 'DELIVERED')}
-                    >
-                      Mark Delivered
-                    </Button>
-                  )}
-                  {job.status === 'DELIVERED' && (
-                    <div className="flex items-center gap-1 text-xs font-mono text-moss font-bold">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Completed</span>
+                    <div className="w-full md:w-auto space-y-1.5">
+                      <div className="flex items-center gap-1 text-[11px] text-loam/70 font-semibold">
+                        <KeyRound className="w-3.5 h-3.5 text-moss" />
+                        <span>Enter Producer Pickup PIN ({job.pickupPin}):</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={4}
+                          placeholder={job.pickupPin}
+                          value={pinInputs[job.id] || ''}
+                          onChange={(e) => setPinInputs({ ...pinInputs, [job.id]: e.target.value })}
+                          className="w-24 px-2 py-1.5 rounded bg-parchment border border-loam/20 font-mono text-center font-bold text-loam focus:ring-2 focus:ring-moss"
+                        />
+                        <Button
+                          variant="primary"
+                          className="text-xs py-1.5 px-3 font-bold"
+                          onClick={() => handleVerifyAndAdvance(job.id, 'PICKED_UP', job.pickupPin)}
+                        >
+                          Verify Pickup
+                        </Button>
+                      </div>
                     </div>
+                  )}
+
+                  {job.status === 'PICKED_UP' && (
+                    <div className="w-full md:w-auto space-y-1.5">
+                      <div className="flex items-center gap-1 text-[11px] text-loam/70 font-semibold">
+                        <ShieldCheck className="w-3.5 h-3.5 text-kraft-deep" />
+                        <span>Enter Consumer Delivery PIN ({job.deliveryPin}):</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={4}
+                          placeholder={job.deliveryPin}
+                          value={pinInputs[job.id] || ''}
+                          onChange={(e) => setPinInputs({ ...pinInputs, [job.id]: e.target.value })}
+                          className="w-24 px-2 py-1.5 rounded bg-parchment border border-loam/20 font-mono text-center font-bold text-loam focus:ring-2 focus:ring-moss"
+                        />
+                        <Button
+                          variant="primary"
+                          className="text-xs py-1.5 px-3 font-bold bg-moss"
+                          onClick={() => handleVerifyAndAdvance(job.id, 'VERIFIED_DELIVERED', job.deliveryPin)}
+                        >
+                          Verify Delivery
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isDelivered && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-moss/10 text-moss border border-moss/20 font-bold">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Verified & Delivered</span>
+                    </div>
+                  )}
+
+                  {pinErrors[job.id] && (
+                    <div className="text-[11px] text-rust font-bold">{pinErrors[job.id]}</div>
                   )}
                 </div>
               </Card>

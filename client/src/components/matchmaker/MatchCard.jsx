@@ -1,88 +1,92 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 import { CompatibilitySeal } from '../ui/CompatibilitySeal';
-import { MapPin, ArrowRight, Truck, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle, ShieldCheck, KeyRound } from 'lucide-react';
 
 export const MatchCard = ({ match, onOpenReasoning, onAcceptMatch }) => {
-  const {
-    id,
-    score = 90,
-    reasoning = '',
-    status = 'PROPOSED',
-    wasteStream = {},
-    resourceNeed = {},
-  } = match;
-
+  const [consumerVerified, setConsumerVerified] = useState(false);
+  const wasteStream = match.wasteStream || {};
   const producer = wasteStream.producer || {};
+  const resourceNeed = match.resourceNeed || {};
   const consumer = resourceNeed.consumer || {};
 
-  const isAccepted = status === 'ACCEPTED';
+  const isAccepted = match.status === 'ACCEPTED' || consumerVerified;
+
+  const handleConsumerVerify = () => {
+    setConsumerVerified(true);
+    if (onAcceptMatch) {
+      onAcceptMatch(match.id);
+    }
+  };
 
   return (
-    <Card className="flex flex-col justify-between space-y-4 border-l-4 border-l-moss">
+    <Card className="p-5 flex flex-col justify-between space-y-4 hover:border-moss transition-all">
       
-      {/* Top Header: Compatibility Seal + Status */}
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <CompatibilitySeal
-            score={score}
-            reasoning={reasoning}
-            onClick={() => onOpenReasoning(match)}
-          />
-          <Badge variant={isAccepted ? 'active' : 'kraft'}>
-            {status}
-          </Badge>
-        </div>
-
-        {/* Symbiosis Match Details */}
-        <div className="p-3 bg-parchment/60 rounded-md border border-loam/10 space-y-2 text-xs font-mono">
-          
-          {/* Producer -> Consumer Material Flow */}
-          <div className="flex items-center justify-between text-loam font-bold">
-            <div className="truncate max-w-[140px]" title={producer.orgName}>
-              {producer.orgName || 'Producer'}
-            </div>
-            <ArrowRight className="w-4 h-4 text-moss shrink-0" />
-            <div className="truncate max-w-[140px] text-right" title={consumer.orgName}>
-              {consumer.orgName || 'Consumer'}
-            </div>
-          </div>
-
-          {/* Material Specs */}
-          <div className="flex justify-between text-[11px] text-loam/70 pt-1 border-t border-loam/10">
-            <span>Material: <strong className="text-moss">{wasteStream.wasteType || 'ORGANIC'}</strong></span>
-            <span>Quantity: <strong>{wasteStream.quantity || 30} {wasteStream.unit || 'kg'}</strong></span>
-          </div>
-
-        </div>
+      {/* Header: Score & Status */}
+      <div className="flex items-start justify-between gap-3">
+        <CompatibilitySeal score={match.score} size="md" />
+        <Badge variant={isAccepted ? 'success' : 'neutral'}>
+          {isAccepted ? 'ACCEPTED & DISPATCHED' : match.status || 'PROPOSED'}
+        </Badge>
       </div>
 
-      {/* Footer Action */}
-      <div className="pt-2 border-t border-loam/10 flex items-center justify-between gap-2">
+      {/* Match Link Details */}
+      <div className="space-y-3 font-sans">
+        <div className="flex items-center justify-between gap-2 p-3 bg-parchment/60 rounded-lg border border-loam/10 font-mono text-xs">
+          <div>
+            <div className="font-bold text-loam truncate max-w-[140px]">{producer.orgName || 'Producer'}</div>
+            <div className="text-[10px] text-loam/60">Material: {wasteStream.wasteType}</div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-moss shrink-0" />
+          <div className="text-right">
+            <div className="font-bold text-loam truncate max-w-[140px]">{consumer.orgName || 'Consumer'}</div>
+            <div className="text-[10px] text-loam/60">Quantity: {wasteStream.quantity} {wasteStream.unit || 'kg'}</div>
+          </div>
+        </div>
+
+        {/* Security Verification Pins */}
+        <div className="p-2.5 bg-mycelium rounded-lg border border-loam/15 flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center gap-1.5 text-moss font-bold">
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Pickup PIN: <code className="bg-moss/10 px-1.5 py-0.5 rounded text-loam">4829</code></span>
+          </div>
+          <div className="flex items-center gap-1.5 text-kraft-deep font-bold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Delivery PIN: <code className="bg-kraft/20 px-1.5 py-0.5 rounded text-loam">7192</code></span>
+          </div>
+        </div>
+
+        {/* AI Match Reasoning Snippet */}
+        <p className="text-xs text-loam/70 font-mono italic">
+          "{match.reasoning}"
+        </p>
+      </div>
+
+      {/* Footer Controls */}
+      <div className="pt-3 border-t border-loam/10 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => onOpenReasoning(match)}
-          className="text-xs font-mono font-bold text-loam/70 hover:text-moss underline"
+          className="text-xs font-mono text-moss font-bold hover:underline"
         >
           View AI Reasoning breakdown
         </button>
 
         {isAccepted ? (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-mono text-xs font-bold">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1 text-xs font-mono text-moss font-bold">
+            <CheckCircle className="w-4 h-4" />
             <span>Pickup Job Scheduled</span>
           </div>
         ) : (
           <Button
             variant="primary"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => onAcceptMatch(id)}
+            className="gap-1.5 text-xs py-2 font-mono font-bold"
+            onClick={handleConsumerVerify}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span>Request pickup</span>
+            <span>Confirm & Request Pickup</span>
           </Button>
         )}
       </div>
