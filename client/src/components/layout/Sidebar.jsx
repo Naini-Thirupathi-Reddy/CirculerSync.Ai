@@ -1,128 +1,117 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
-  FilePlus2,
+  Recycle,
   Sparkles,
   TrendingUp,
   Truck,
-  MapPin,
   BarChart3,
   Network,
+  Map,
 } from 'lucide-react';
 
 export const Sidebar = () => {
-  const sections = [
+  const { user } = useAuth();
+  const role = user?.role || 'PRODUCER';
+
+  // Role-specific navigation items
+  const allNavItems = [
     {
       title: 'Log & Match',
+      roles: ['PRODUCER', 'ADMIN'],
       items: [
-        { path: '/waste', label: 'Waste Streams', icon: FilePlus2 },
-        { path: '/matches', label: 'AI Matches', icon: Sparkles },
-        { path: '/forecasts', label: 'Waste Forecasts', icon: TrendingUp },
+        { label: 'Waste Streams', path: '/waste', icon: Recycle, roles: ['PRODUCER', 'ADMIN'] },
+        { label: 'AI Matches', path: '/matches', icon: Sparkles, roles: ['PRODUCER', 'CONSUMER', 'ADMIN'] },
+        { label: 'Waste Forecasts', path: '/forecasts', icon: TrendingUp, roles: ['PRODUCER', 'ADMIN'] },
       ],
     },
     {
-      title: 'Move',
+      title: 'Resource Intake',
+      roles: ['CONSUMER'],
       items: [
-        { path: '/logistics', label: 'Pickup Jobs', icon: Truck },
-        { path: '/logistics/map', label: 'Route Map', icon: MapPin },
+        { label: 'Incoming Matches', path: '/matches', icon: Sparkles, roles: ['CONSUMER'] },
+        { label: 'Available Streams', path: '/waste', icon: Recycle, roles: ['CONSUMER'] },
       ],
     },
     {
-      title: 'Measure',
+      title: 'Logistics & Dispatch',
+      roles: ['LOGISTICS', 'ADMIN'],
       items: [
-        { path: '/impact', label: 'Impact Intelligence', icon: BarChart3 },
-        { path: '/network', label: 'Community Network', icon: Network },
+        { label: 'Pickup Jobs', path: '/logistics', icon: Truck, roles: ['LOGISTICS', 'ADMIN'] },
+        { label: 'Route Map', path: '/logistics/map', icon: Map, roles: ['LOGISTICS', 'ADMIN'] },
+      ],
+    },
+    {
+      title: 'Impact & Network',
+      roles: ['PRODUCER', 'CONSUMER', 'LOGISTICS', 'ADMIN'],
+      items: [
+        { label: 'Impact Intelligence', path: '/impact', icon: BarChart3, roles: ['PRODUCER', 'CONSUMER', 'ADMIN'] },
+        { label: 'Community Network', path: '/network', icon: Network, roles: ['CONSUMER', 'ADMIN'] },
       ],
     },
   ];
 
+  // Filter sections by role
+  const visibleSections = allNavItems
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => item.roles.includes(role)),
+    }))
+    .filter(section => section.items.length > 0);
+
   return (
-    <>
-      {/* Desktop Sidebar (Left) */}
-      <aside className="hidden md:flex flex-col w-64 bg-mycelium/60 border-r border-loam/10 p-4 space-y-6 shrink-0 min-h-[calc(100vh-4rem)]">
-        {sections.map((section, idx) => (
-          <div key={idx} className="space-y-1">
-            <h3 className="px-3 text-[11px] font-mono font-bold uppercase tracking-widest text-loam/50">
-              {section.title}
-            </h3>
-            <nav className="space-y-1 pt-1">
-              {section.items.map(item => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === '/waste' || item.path === '/logistics'}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-sans font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'bg-moss text-parchment shadow-sm font-semibold'
-                          : 'text-loam hover:bg-parchment hover:text-moss-deep'
-                      }`
-                    }
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </nav>
-          </div>
-        ))}
-      </aside>
+    <aside className="w-64 bg-mycelium/60 border-r border-loam/15 min-h-[calc(100vh-4rem)] p-4 hidden md:flex flex-col justify-between shrink-0">
+      
+      <div className="space-y-6">
+        
+        {/* Role Badge Header */}
+        <div className="p-3 rounded-lg bg-parchment border border-loam/15 font-mono text-xs">
+          <div className="text-[10px] text-loam/60 font-bold uppercase">Active Dashboard Mode</div>
+          <div className="text-moss font-bold text-sm mt-0.5 truncate">{user?.orgName || 'Organization'}</div>
+          <div className="text-[11px] text-kraft-deep font-bold mt-0.5 uppercase tracking-wider">{role}</div>
+        </div>
 
-      {/* Mobile Bottom Tab Bar (<375px & mobile screens) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-mycelium border-t border-loam/15 z-40 flex items-center justify-around px-2 text-[10px] font-mono">
-        <NavLink
-          to="/waste"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 p-1 ${isActive ? 'text-moss font-bold' : 'text-loam/70'}`
-          }
-        >
-          <FilePlus2 className="w-4 h-4" />
-          <span>Waste</span>
-        </NavLink>
+        {/* Dynamic Navigation Sections */}
+        <nav className="space-y-6">
+          {visibleSections.map((group, idx) => (
+            <div key={idx} className="space-y-2">
+              <div className="text-[10px] font-mono font-bold text-loam/50 uppercase tracking-wider px-2">
+                {group.title}
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+                          isActive
+                            ? 'bg-moss text-parchment shadow-sm font-bold'
+                            : 'text-loam/80 hover:bg-parchment hover:text-loam'
+                        }`
+                      }
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
 
-        <NavLink
-          to="/matches"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 p-1 ${isActive ? 'text-moss font-bold' : 'text-loam/70'}`
-          }
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Matches</span>
-        </NavLink>
+      </div>
 
-        <NavLink
-          to="/logistics"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 p-1 ${isActive ? 'text-moss font-bold' : 'text-loam/70'}`
-          }
-        >
-          <Truck className="w-4 h-4" />
-          <span>Move</span>
-        </NavLink>
+      {/* Footer Branding */}
+      <div className="pt-4 border-t border-loam/15 font-mono text-[10px] text-loam/50 flex items-center justify-between">
+        <span>CircularSync AI</span>
+        <span>v1.0</span>
+      </div>
 
-        <NavLink
-          to="/impact"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 p-1 ${isActive ? 'text-moss font-bold' : 'text-loam/70'}`
-          }
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Impact</span>
-        </NavLink>
-
-        <NavLink
-          to="/network"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 p-1 ${isActive ? 'text-moss font-bold' : 'text-loam/70'}`
-          }
-        >
-          <Network className="w-4 h-4" />
-          <span>Network</span>
-        </NavLink>
-      </nav>
-    </>
+    </aside>
   );
 };
