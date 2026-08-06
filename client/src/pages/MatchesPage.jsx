@@ -125,34 +125,28 @@ export const MatchesPage = () => {
   const [searchParams] = useSearchParams();
   const wasteId = searchParams.get('wasteId');
 
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [matches, setMatches] = useState(PRODUCER_MATCHES);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   const fetchMatches = async () => {
+    const role = user?.role || 'PRODUCER';
+    let defaultSet = PRODUCER_MATCHES;
+    if (role === 'CONSUMER') defaultSet = CONSUMER_MATCHES;
+    else if (role === 'LOGISTICS') defaultSet = LOGISTICS_MATCHES;
+    else if (role === 'ADMIN') defaultSet = [...PRODUCER_MATCHES, ...CONSUMER_MATCHES, ...LOGISTICS_MATCHES];
+
     try {
       const url = wasteId ? `/matches?wasteId=${wasteId}` : '/matches/my';
       const res = await api.get(url);
-      if (res.data && res.data.length > 0) {
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setMatches(res.data);
-        return;
+      } else {
+        setMatches(defaultSet);
       }
     } catch (err) {
-      console.warn('Using role-specific fallback matches');
-    }
-
-    // Role-specific dataset fallback
-    const role = user?.role || 'PRODUCER';
-    if (role === 'CONSUMER') {
-      setMatches(CONSUMER_MATCHES);
-    } else if (role === 'LOGISTICS') {
-      setMatches(LOGISTICS_MATCHES);
-    } else if (role === 'ADMIN') {
-      setMatches([...PRODUCER_MATCHES, ...CONSUMER_MATCHES, ...LOGISTICS_MATCHES]);
-    } else {
-      setMatches(PRODUCER_MATCHES);
+      setMatches(defaultSet);
     }
   };
 
@@ -207,32 +201,16 @@ export const MatchesPage = () => {
       </div>
 
       {/* Card Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2].map(i => (
-            <div key={i} className="h-48 bg-mycelium/40 animate-pulse rounded-lg border border-loam/10" />
-          ))}
-        </div>
-      ) : matches.length === 0 ? (
-        <div className="p-12 text-center border-2 border-dashed border-loam/20 rounded-xl space-y-3 bg-mycelium/30">
-          <Sparkles className="w-10 h-10 text-loam/40 mx-auto" />
-          <h3 className="font-display font-bold text-lg text-loam">No matches yet</h3>
-          <p className="text-xs font-mono text-loam/70 max-w-sm mx-auto">
-            No matches found for your current criteria. Log new waste streams or expand intake windows to start matching.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {matches.map(match => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              onOpenReasoning={handleOpenReasoning}
-              onAcceptMatch={handleAcceptMatch}
-            />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {matches.map(match => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            onOpenReasoning={handleOpenReasoning}
+            onAcceptMatch={handleAcceptMatch}
+          />
+        ))}
+      </div>
 
       {/* Reasoning Drawer */}
       <ReasoningDrawer

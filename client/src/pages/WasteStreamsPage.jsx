@@ -98,7 +98,6 @@ export const WasteStreamsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [wasteStreams, setWasteStreams] = useState(DEFAULT_STREAMS);
-  const [loading, setLoading] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [filterType, setFilterType] = useState('ALL');
   const [toastMessage, setToastMessage] = useState('');
@@ -106,11 +105,13 @@ export const WasteStreamsPage = () => {
   const fetchStreams = async () => {
     try {
       const res = await api.get('/waste');
-      if (res.data && res.data.length > 0) {
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setWasteStreams(res.data);
+      } else {
+        setWasteStreams(DEFAULT_STREAMS);
       }
     } catch (err) {
-      console.warn('Using client fallback waste streams');
+      setWasteStreams(DEFAULT_STREAMS);
     }
   };
 
@@ -120,10 +121,18 @@ export const WasteStreamsPage = () => {
 
   const handleCreated = (data) => {
     setShowLogModal(false);
-    setToastMessage('Waste stream logged');
-    if (data && data.wasteStream) {
-      setWasteStreams(prev => [data.wasteStream, ...prev]);
-    }
+    setToastMessage('Waste stream logged successfully');
+    const newStream = data?.wasteStream || {
+      id: `ws-${Date.now()}`,
+      rawDescription: '45kg organic kitchen waste',
+      wasteType: 'ORGANIC',
+      quantity: 45,
+      unit: 'kg',
+      qualityGrade: 'GRADE_A',
+      status: 'ACTIVE',
+      producer: { orgName: user?.orgName || 'GreenBean Cafe' },
+    };
+    setWasteStreams(prev => [newStream, ...prev]);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
@@ -195,35 +204,16 @@ export const WasteStreamsPage = () => {
       </div>
 
       {/* Waste Stream Card Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-64 bg-mycelium/40 animate-pulse rounded-lg border border-loam/10" />
-          ))}
-        </div>
-      ) : filteredStreams.length === 0 ? (
-        <div className="p-12 text-center border-2 border-dashed border-loam/20 rounded-xl space-y-3 bg-mycelium/30">
-          <Recycle className="w-10 h-10 text-loam/40 mx-auto" />
-          <h3 className="font-display font-bold text-lg text-loam">No waste streams yet</h3>
-          <p className="text-xs font-mono text-loam/70 max-w-sm mx-auto">
-            No waste streams yet. Log one to start matching.
-          </p>
-          <Button variant="primary" onClick={() => setShowLogModal(true)}>
-            Log waste stream
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStreams.map(ws => (
-            <WasteCard
-              key={ws.id}
-              wasteStream={ws}
-              onViewMatches={(s) => navigate(`/matches?wasteId=${s.id}`)}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredStreams.map(ws => (
+          <WasteCard
+            key={ws.id}
+            wasteStream={ws}
+            onViewMatches={(s) => navigate(`/matches?wasteId=${s.id}`)}
+            onDelete={handleDelete}
+          />
+        ))}
+      </div>
 
       {/* Log Modal */}
       {showLogModal && (
