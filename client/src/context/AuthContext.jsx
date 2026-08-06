@@ -22,95 +22,56 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('cs-unauthorized', handleUnauthorized);
   }, []);
 
-  const login = async (email = 'sarah@greenbean.com', password = 'demo1234') => {
+  /**
+   * 1. Google OAuth & Gmail Verification Step
+   */
+  const googleLogin = async (gmailEmail) => {
     setLoading(true);
-    const cleanEmail = email || 'sarah@greenbean.com';
-    let userData = {
-      id: `user-${Date.now()}`,
-      name: cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Sarah Jenkins',
-      email: cleanEmail,
-      role: 'PRODUCER',
-      orgName: cleanEmail.includes('@') ? `${cleanEmail.split('@')[0]}'s Bakery` : 'GreenBean Cafe & Bakery',
-      address: 'New York, NY',
-    };
-    let tokenStr = 'cs-jwt-token-authenticated';
-
     try {
-      const res = await api.post('/auth/login', { email: cleanEmail, password });
-      if (res.data && res.data.user) {
-        userData = res.data.user;
-        tokenStr = res.data.token || tokenStr;
-      }
-    } catch (err) {
-      console.warn('API fallback login:', err.message);
+      const res = await api.post('/auth/google', { email: gmailEmail });
+      return res.data;
+    } finally {
+      setLoading(false);
     }
-
-    setToken(tokenStr);
-    setUser(userData);
-    localStorage.setItem('cs_jwt_token', tokenStr);
-    localStorage.setItem('cs_user', JSON.stringify(userData));
-    setLoading(false);
-    return userData;
   };
 
-  const googleLogin = async (gmailEmail = 'user.gmail@gmail.com', name = 'Google User') => {
+  /**
+   * 2. Verify 6-Digit OTP Step
+   */
+  const verifyOtp = async (email, otp) => {
     setLoading(true);
-    let userData = {
-      id: `google-${Date.now()}`,
-      name,
-      email: gmailEmail,
-      role: 'PRODUCER',
-      orgName: `${name}'s Organic Hub`,
-      address: 'New York, NY',
-    };
-    let tokenStr = 'cs-jwt-token-google-auth';
-
     try {
-      const res = await api.post('/auth/google', { email: gmailEmail, name });
-      if (res.data && res.data.user) {
-        userData = res.data.user;
-        tokenStr = res.data.token || tokenStr;
-      }
-    } catch (err) {
-      console.warn('API fallback Google login:', err.message);
+      const res = await api.post('/auth/verify-otp', { email, otp });
+      const { token, user } = res.data;
+      setToken(token);
+      setUser(user);
+      localStorage.setItem('cs_jwt_token', token);
+      localStorage.setItem('cs_user', JSON.stringify(user));
+      return res.data;
+    } finally {
+      setLoading(false);
     }
-
-    setToken(tokenStr);
-    setUser(userData);
-    localStorage.setItem('cs_jwt_token', tokenStr);
-    localStorage.setItem('cs_user', JSON.stringify(userData));
-    setLoading(false);
-    return userData;
   };
 
-  const signup = async (userDataInput = {}) => {
+  /**
+   * 3. Resend OTP Step
+   */
+  const resendOtp = async (email) => {
     setLoading(true);
-    let userData = {
-      id: `user-${Date.now()}`,
-      name: userDataInput.name || 'Spoorthi',
-      email: userDataInput.email || 'spoorthireddy@gmail.com',
-      role: userDataInput.role || 'PRODUCER',
-      orgName: userDataInput.orgName || userDataInput.name || 'Spoors Hub',
-      address: userDataInput.address || 'Siddipet',
-    };
-    let tokenStr = 'cs-jwt-token-signed-up';
-
     try {
-      const res = await api.post('/auth/signup', userDataInput);
-      if (res.data && res.data.user) {
-        userData = res.data.user;
-        tokenStr = res.data.token || tokenStr;
-      }
-    } catch (err) {
-      console.warn('API fallback signup:', err.message);
+      const res = await api.post('/auth/resend-otp', { email });
+      return res.data;
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setToken(tokenStr);
-    setUser(userData);
-    localStorage.setItem('cs_jwt_token', tokenStr);
-    localStorage.setItem('cs_user', JSON.stringify(userData));
-    setLoading(false);
-    return userData;
+  const login = async (email) => {
+    return googleLogin(email);
+  };
+
+  const signup = async (userData) => {
+    return googleLogin(userData.email || 'sarah@greenbean.com');
   };
 
   const demoLogin = async (role = 'PRODUCER') => {
@@ -133,13 +94,13 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('API fallback demoLogin:', err.message);
+    } finally {
+      setToken(tokenStr);
+      setUser(userData);
+      localStorage.setItem('cs_jwt_token', tokenStr);
+      localStorage.setItem('cs_user', JSON.stringify(userData));
+      setLoading(false);
     }
-
-    setToken(tokenStr);
-    setUser(userData);
-    localStorage.setItem('cs_jwt_token', tokenStr);
-    localStorage.setItem('cs_user', JSON.stringify(userData));
-    setLoading(false);
     return userData;
   };
 
@@ -158,7 +119,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, googleLogin, signup, demoLogin, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, token, loading, login, googleLogin, verifyOtp, resendOtp, signup, demoLogin, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
