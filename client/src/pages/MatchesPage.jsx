@@ -3,10 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MatchCard } from '../components/matchmaker/MatchCard';
 import { ReasoningDrawer } from '../components/layout/ReasoningDrawer';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 
-const DEFAULT_MATCHES = [
+const PRODUCER_MATCHES = [
   {
     id: 'match-1',
     score: 94.5,
@@ -43,12 +43,60 @@ const DEFAULT_MATCHES = [
       wasteType: 'ORGANIC',
       quantity: 60.0,
       unit: 'kg',
-      producer: { orgName: 'Roasters Choice Coffee', lat: 40.7242, lng: -73.9968 },
+      producer: { orgName: 'GreenBean Cafe & Bakery', lat: 40.7242, lng: -73.9968 },
     },
     resourceNeed: {
       consumer: { orgName: 'City Farm Urban Agriculture', lat: 40.7282, lng: -74.0078 },
     },
   },
+];
+
+const CONSUMER_MATCHES = [
+  {
+    id: 'match-consumer-1',
+    score: 96.5,
+    compatibilityScore: 100,
+    volumeScore: 98,
+    distanceScore: 95,
+    timingScore: 92,
+    reasoning: '96.5% compatibility seal · Incoming 45kg nitrogen-rich coffee substrate ready for mushroom spawn inoculation.',
+    status: 'PROPOSED',
+    wasteStream: {
+      id: 'ws-1',
+      rawDescription: '45kg fresh espresso coffee grounds, clean single-origin arabica substrate',
+      wasteType: 'ORGANIC',
+      quantity: 45.0,
+      unit: 'kg',
+      producer: { orgName: 'GreenBean Cafe & Bakery', lat: 40.7230, lng: -73.9985 },
+    },
+    resourceNeed: {
+      consumer: { orgName: 'Mycelium Magic Mushrooms', lat: 40.7265, lng: -74.0062 },
+    },
+  },
+  {
+    id: 'match-consumer-2',
+    score: 89.0,
+    compatibilityScore: 92,
+    volumeScore: 88,
+    distanceScore: 85,
+    timingScore: 90,
+    reasoning: '89.0% compatibility seal · 120kg vegetable trimmings for urban compost thermal batching.',
+    status: 'PROPOSED',
+    wasteStream: {
+      id: 'ws-5',
+      rawDescription: '120kg vegetable trimmings and fruit peels from prep kitchen',
+      wasteType: 'ORGANIC',
+      quantity: 120.0,
+      unit: 'kg',
+      producer: { orgName: 'Urban Market Grocers', lat: 40.7248, lng: -73.9972 },
+    },
+    resourceNeed: {
+      consumer: { orgName: 'City Farm Urban Agriculture', lat: 40.7282, lng: -74.0078 },
+    },
+  },
+];
+
+const LOGISTICS_MATCHES = [
   {
     id: 'match-3',
     score: 96.0,
@@ -56,7 +104,7 @@ const DEFAULT_MATCHES = [
     volumeScore: 98,
     distanceScore: 92,
     timingScore: 95,
-    reasoning: '96.0% compatibility seal · 2.1km distance, 85kg clean corrugated cardboard ready for eco-packaging re-pulping.',
+    reasoning: '96.0% compatibility seal · Accepted pickup order ready for EcoBox packaging delivery.',
     status: 'ACCEPTED',
     wasteStream: {
       id: 'ws-3',
@@ -77,7 +125,7 @@ export const MatchesPage = () => {
   const [searchParams] = useSearchParams();
   const wasteId = searchParams.get('wasteId');
 
-  const [matches, setMatches] = useState(DEFAULT_MATCHES);
+  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -89,15 +137,28 @@ export const MatchesPage = () => {
       const res = await api.get(url);
       if (res.data && res.data.length > 0) {
         setMatches(res.data);
+        return;
       }
     } catch (err) {
-      console.warn('Using client fallback matches');
+      console.warn('Using role-specific fallback matches');
+    }
+
+    // Role-specific dataset fallback
+    const role = user?.role || 'PRODUCER';
+    if (role === 'CONSUMER') {
+      setMatches(CONSUMER_MATCHES);
+    } else if (role === 'LOGISTICS') {
+      setMatches(LOGISTICS_MATCHES);
+    } else if (role === 'ADMIN') {
+      setMatches([...PRODUCER_MATCHES, ...CONSUMER_MATCHES, ...LOGISTICS_MATCHES]);
+    } else {
+      setMatches(PRODUCER_MATCHES);
     }
   };
 
   useEffect(() => {
     fetchMatches();
-  }, [wasteId, user]);
+  }, [wasteId, user?.role]);
 
   const handleOpenReasoning = (match) => {
     setSelectedMatch(match);
@@ -115,10 +176,12 @@ export const MatchesPage = () => {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
+  const roleName = user?.role || 'PRODUCER';
+
   return (
     <div className="space-y-6 animate-in fade-in">
       
-      {/* Toast Notification per Voice Guideline */}
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-lg bg-moss text-parchment font-mono text-sm shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-4">
           <Sparkles className="w-4 h-4" />
@@ -127,13 +190,20 @@ export const MatchesPage = () => {
       )}
 
       {/* Header */}
-      <div className="border-b border-loam/10 pb-4">
-        <h1 className="text-2xl md:text-3xl font-display font-bold text-loam">
-          AI Symbiosis Matchmaker
-        </h1>
-        <p className="text-xs font-mono text-loam/60 uppercase tracking-widest mt-1">
-          Weighted multi-criteria matching engine for waste producers & consumers
-        </p>
+      <div className="border-b border-loam/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-loam">
+            AI Symbiosis Matchmaker
+          </h1>
+          <p className="text-xs font-mono text-loam/60 uppercase tracking-widest mt-1">
+            Weighted multi-criteria matching engine for waste producers & consumers
+          </p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-moss/10 text-moss border border-moss/20 font-mono text-xs font-bold">
+          <ShieldCheck className="w-4 h-4" />
+          <span>Viewing as: {roleName}</span>
+        </div>
       </div>
 
       {/* Card Grid */}
