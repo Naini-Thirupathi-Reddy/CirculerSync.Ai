@@ -1,173 +1,137 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { ESGReportExporter } from '../components/impact/ESGReportExporter';
-import { Cloud, Droplets, Trash, DollarSign, Award, TrendingUp, Sparkles } from 'lucide-react';
-import api from '../services/api';
+import { Leaf, Droplets, Trash2, DollarSign, ShieldCheck } from 'lucide-react';
 
 export const ImpactPage = () => {
-  const [personalImpact, setPersonalImpact] = useState(null);
-  const [communityImpact, setCommunityImpact] = useState(null);
-  const [reportData, setReportData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const role = user?.role || 'PRODUCER';
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/impact/personal'),
-      api.get('/impact/community'),
-      api.get('/impact/report'),
-    ])
-      .then(([pRes, cRes, rRes]) => {
-        setPersonalImpact(pRes.data);
-        setCommunityImpact(cRes.data);
-        setReportData(rRes.data);
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const pTotals = personalImpact?.totals || {
-    co2SavedKg: 144.5,
-    waterSavedL: 11175.0,
-    landfillDivertedKg: 235.0,
-    producerSavings: 42.50,
-    consumerSavings: 36.90,
+  // Role-specific impact metrics
+  const getImpactData = () => {
+    if (role === 'CONSUMER') {
+      return {
+        title: 'Resource Consumer Sustainability Ledger',
+        co2Kg: 98.2,
+        waterL: 8450,
+        landfillKg: 165,
+        savings: '$36.90',
+        savingsLabel: 'Virgin Material Purchase Savings',
+        description: 'Verified metrics for Mycelium Magic Mushrooms & City Farm urban agriculture intakes.',
+      };
+    }
+    if (role === 'LOGISTICS') {
+      return {
+        title: 'Eco Logistics Efficiency Ledger',
+        co2Kg: 215.0,
+        waterL: 14200,
+        landfillKg: 340,
+        savings: '$112.50',
+        savingsLabel: 'Vehicle Miles & Fuel Savings',
+        description: 'Optimized spatial cluster routes for Swift Eco Logistics pickups.',
+      };
+    }
+    if (role === 'ADMIN') {
+      return {
+        title: 'Neighborhood Circular Ecosystem Ledger',
+        co2Kg: 457.7,
+        waterL: 33825,
+        landfillKg: 740,
+        savings: '$191.80',
+        savingsLabel: 'Cumulative Neighborhood Value Generated',
+        description: 'Ecosystem-wide sustainability ledger across 14 neighborhood businesses.',
+      };
+    }
+    // PRODUCER Default
+    return {
+      title: 'Waste Producer Sustainability Ledger',
+      co2Kg: 144.5,
+      waterL: 11175,
+      landfillKg: 235,
+      savings: '$42.50',
+      savingsLabel: 'Disposal Fee Savings',
+      description: 'Verified environmental metrics for GreenBean Cafe & Bakery waste streams.',
+    };
   };
 
-  const cTotals = communityImpact?.communityTotals || {
-    co2SavedKg: 428.0,
-    waterSavedL: 24600.0,
-    landfillDivertedKg: 680.0,
-    totalEconomicSavings: 285.50,
-  };
+  const impact = getImpactData();
 
   return (
     <div className="space-y-6 animate-in fade-in">
       
-      {/* Header with PDF Exporter */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-loam/10 pb-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-loam">
             Impact Intelligence Engine
           </h1>
           <p className="text-xs font-mono text-loam/60 uppercase tracking-widest mt-1">
-            Verifiable Environmental & Financial Sustainability Ledger
+            {impact.description}
           </p>
         </div>
 
-        <ESGReportExporter reportData={reportData} />
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-moss/10 text-moss border border-moss/20 font-mono text-xs font-bold shrink-0">
+          <ShieldCheck className="w-4 h-4" />
+          <span>Role Ledger: {role}</span>
+        </div>
       </div>
 
-      {/* Hero Stats Grid using Fraunces Display Font */}
+      {/* Impact Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* CO2 Saved Card */}
-        <Card className="p-5 border-l-4 border-l-moss space-y-2">
-          <div className="flex items-center justify-between text-moss">
-            <Cloud className="w-6 h-6" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-loam/60">CO2 Emissions</span>
+        <Card className="p-5 flex items-start gap-4">
+          <div className="p-3 rounded-lg bg-moss/10 text-moss shrink-0">
+            <Leaf className="w-6 h-6" />
           </div>
-          <div className="text-3xl font-display font-bold text-loam">
-            {pTotals.co2SavedKg} <span className="text-base font-normal text-loam/70">kg</span>
+          <div>
+            <div className="text-[10px] font-mono uppercase text-loam/60 font-bold">CO2 Avoided</div>
+            <div className="text-2xl font-display font-bold text-loam mt-0.5">{impact.co2Kg} kg</div>
+            <div className="text-[10px] font-mono text-moss font-semibold mt-1">Emissions Prevented</div>
           </div>
-          <p className="text-xs font-mono text-moss-deep dark:text-moss">
-            Equivalent to {Math.round(pTotals.co2SavedKg * 2.5)} km driving avoided
-          </p>
         </Card>
 
-        {/* Water Preserved Card */}
-        <Card className="p-5 border-l-4 border-l-kraft space-y-2">
-          <div className="flex items-center justify-between text-kraft-deep dark:text-kraft">
+        <Card className="p-5 flex items-start gap-4">
+          <div className="p-3 rounded-lg bg-kraft/20 text-kraft-deep shrink-0">
             <Droplets className="w-6 h-6" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-loam/60">Freshwater Preserved</span>
           </div>
-          <div className="text-3xl font-display font-bold text-loam">
-            {pTotals.waterSavedL.toLocaleString()} <span className="text-base font-normal text-loam/70">L</span>
+          <div>
+            <div className="text-[10px] font-mono uppercase text-loam/60 font-bold">Water Preserved</div>
+            <div className="text-2xl font-display font-bold text-loam mt-0.5">{impact.waterL.toLocaleString()} L</div>
+            <div className="text-[10px] font-mono text-kraft-deep font-semibold mt-1">Process Water Conserved</div>
           </div>
-          <p className="text-xs font-mono text-kraft-deep dark:text-kraft">
-            100L saved per kg cardboard recycled
-          </p>
         </Card>
 
-        {/* Landfill Diverted Card */}
-        <Card className="p-5 border-l-4 border-l-rust space-y-2">
-          <div className="flex items-center justify-between text-rust">
-            <Trash className="w-6 h-6" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-loam/60">Landfill Diversion</span>
+        <Card className="p-5 flex items-start gap-4">
+          <div className="p-3 rounded-lg bg-rust/10 text-rust-deep shrink-0">
+            <Trash2 className="w-6 h-6" />
           </div>
-          <div className="text-3xl font-display font-bold text-loam">
-            {pTotals.landfillDivertedKg} <span className="text-base font-normal text-loam/70">kg</span>
+          <div>
+            <div className="text-[10px] font-mono uppercase text-loam/60 font-bold">Landfill Diverted</div>
+            <div className="text-2xl font-display font-bold text-loam mt-0.5">{impact.landfillKg} kg</div>
+            <div className="text-[10px] font-mono text-rust-deep font-semibold mt-1">Direct Landfill Diversion</div>
           </div>
-          <p className="text-xs font-mono text-rust-deep dark:text-rust">
-            1:1 direct waste diversion ratio
-          </p>
         </Card>
 
-        {/* Cost Savings Card */}
-        <Card className="p-5 border-l-4 border-l-loam space-y-2">
-          <div className="flex items-center justify-between text-loam">
+        <Card className="p-5 flex items-start gap-4">
+          <div className="p-3 rounded-lg bg-loam/10 text-loam shrink-0">
             <DollarSign className="w-6 h-6" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-loam/60">Economic Value</span>
           </div>
-          <div className="text-3xl font-display font-bold text-moss">
-            ${(pTotals.producerSavings + pTotals.consumerSavings).toFixed(2)}
-          </div>
-          <p className="text-xs font-mono text-loam/70">
-            Disposal fee & purchasing cost savings
-          </p>
-        </Card>
-
-      </div>
-
-      {/* Community vs Personal Comparison */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Organization Personal Impact */}
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-loam/10">
-            <h3 className="font-display font-bold text-lg text-loam">Your Organization Ledger</h3>
-            <span className="font-mono text-xs text-moss font-bold">Verified Audit</span>
-          </div>
-
-          <div className="space-y-3 font-mono text-xs">
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Avoided Disposal Fees ($0.20/kg):</span>
-              <span className="font-bold text-moss">${pTotals.producerSavings.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Avoided Material Purchase ($0.15/kg):</span>
-              <span className="font-bold text-kraft-deep dark:text-kraft">${pTotals.consumerSavings.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Completed Circular Swaps:</span>
-              <span className="font-bold text-loam">{personalImpact?.logsCount || 6} Swaps</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Neighborhood Community Cumulative Impact */}
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-loam/10">
-            <h3 className="font-display font-bold text-lg text-loam">Neighborhood Network Aggregate</h3>
-            <span className="font-mono text-xs text-kraft font-bold">14 Active Businesses</span>
-          </div>
-
-          <div className="space-y-3 font-mono text-xs">
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Total Neighborhood CO2 Diverted:</span>
-              <span className="font-bold text-moss">{cTotals.co2SavedKg} kg CO2</span>
-            </div>
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Total Neighborhood Water Preserved:</span>
-              <span className="font-bold text-kraft-deep dark:text-kraft">{cTotals.waterSavedL.toLocaleString()} Liters</span>
-            </div>
-            <div className="flex justify-between p-3 bg-parchment/60 rounded border border-loam/10">
-              <span className="text-loam/70">Total Neighborhood Circular Savings:</span>
-              <span className="font-bold text-loam">${cTotals.totalEconomicSavings.toFixed(2)}</span>
+          <div>
+            <div className="text-[10px] font-mono uppercase text-loam/60 font-bold">Financial Value</div>
+            <div className="text-2xl font-display font-bold text-loam mt-0.5">{impact.savings}</div>
+            <div className="text-[10px] font-mono text-loam/70 font-semibold mt-1 truncate max-w-[130px]" title={impact.savingsLabel}>
+              {impact.savingsLabel}
             </div>
           </div>
         </Card>
 
       </div>
+
+      {/* ESG Report Exporter PDF Download Card */}
+      <Card className="p-6">
+        <ESGReportExporter impactData={impact} user={user} />
+      </Card>
 
     </div>
   );
