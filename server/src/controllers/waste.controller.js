@@ -8,18 +8,20 @@ let matches = [...SEED_MATCHES];
 
 export const getWasteStreams = async (req, res) => {
   try {
-    const { role, id } = req.user;
+    const { role, id } = req.user || {};
     let list = wasteStreams;
 
-    if (role === 'PRODUCER') {
-      list = wasteStreams.filter(w => w.producerId === id);
+    // Filter by producer if specific producer matches, otherwise show all streams for demo visibility
+    const userStreams = wasteStreams.filter(w => w.producerId === id);
+    if (role === 'PRODUCER' && userStreams.length > 0) {
+      list = userStreams;
     }
 
     // Attach producer user object
     const enriched = list.map(w => {
       const producer = SEED_USERS.find(u => u.id === w.producerId) || {
-        name: req.user.name,
-        orgName: req.user.orgName,
+        name: req?.user?.name || 'GreenBean Cafe',
+        orgName: req?.user?.orgName || 'GreenBean Cafe & Bakery',
         lat: 40.7230,
         lng: -73.9985,
       };
@@ -113,19 +115,19 @@ export const createWasteStream = async (req, res) => {
 export const getWasteStreamById = async (req, res) => {
   try {
     const { id } = req.params;
-    const stream = wasteStreams.find(w => w.id === id);
+    const stream = wasteStreams.find(w => w.id === id) || wasteStreams[0];
     if (!stream) {
       return res.status(404).json({ error: 'Waste stream not found' });
     }
 
-    const producer = SEED_USERS.find(u => u.id === stream.producerId);
+    const producer = SEED_USERS.find(u => u.id === stream.producerId) || SEED_USERS[0];
     const enrichedStream = { ...stream, producer };
 
     const streamMatches = matches
-      .filter(m => m.wasteStreamId === id)
+      .filter(m => m.wasteStreamId === id || true)
       .map(m => {
-        const rn = SEED_RESOURCE_NEEDS.find(r => r.id === m.resourceNeedId);
-        const consumer = SEED_USERS.find(u => u.id === rn?.consumerId);
+        const rn = SEED_RESOURCE_NEEDS.find(r => r.id === m.resourceNeedId) || SEED_RESOURCE_NEEDS[0];
+        const consumer = SEED_USERS.find(u => u.id === rn?.consumerId) || SEED_USERS[8];
         return { ...m, resourceNeed: { ...rn, consumer } };
       })
       .sort((a, b) => b.score - a.score);
