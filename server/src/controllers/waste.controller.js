@@ -11,17 +11,25 @@ export const getWasteStreams = async (req, res) => {
     const { role, id } = req.user || {};
     let list = wasteStreams;
 
-    // Filter by producer if specific producer matches, otherwise show all streams for demo visibility
-    const userStreams = wasteStreams.filter(w => w.producerId === id);
-    if (role === 'PRODUCER' && userStreams.length > 0) {
-      list = userStreams;
+    if (role === 'PRODUCER') {
+      // Filter streams belonging to this producer (or top producer streams)
+      const producerSpecific = wasteStreams.filter(w => w.producerId === id || w.producerId === 'prod-1' || w.producerId === 'prod-2');
+      list = producerSpecific.length > 0 ? producerSpecific : wasteStreams.slice(0, 4);
+    } else if (role === 'CONSUMER') {
+      // Show streams that match active consumer resource needs
+      list = wasteStreams.filter(w => w.status === 'ACTIVE' || w.status === 'MATCHED');
+    } else if (role === 'LOGISTICS') {
+      // Show streams scheduled for pickup
+      list = wasteStreams.filter(w => w.status === 'MATCHED' || w.status === 'COMPLETED');
+    } else {
+      // Admin sees entire neighborhood network
+      list = wasteStreams;
     }
 
-    // Attach producer user object
     const enriched = list.map(w => {
       const producer = SEED_USERS.find(u => u.id === w.producerId) || {
-        name: req?.user?.name || 'GreenBean Cafe',
-        orgName: req?.user?.orgName || 'GreenBean Cafe & Bakery',
+        name: 'GreenBean Cafe',
+        orgName: 'GreenBean Cafe & Bakery',
         lat: 40.7230,
         lng: -73.9985,
       };
@@ -42,7 +50,6 @@ export const createWasteStream = async (req, res) => {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    // Run NLP Classifier
     const nlpData = parseWasteDescription(rawDescription);
 
     const producerUser = SEED_USERS.find(u => u.id === req.user.id) || {
@@ -72,7 +79,6 @@ export const createWasteStream = async (req, res) => {
 
     wasteStreams.unshift(newWasteStream);
 
-    // Trigger AI Matching Engine automatically for active consumer resource needs
     const newMatches = SEED_RESOURCE_NEEDS.map(rn => {
       const consumer = SEED_USERS.find(u => u.id === rn.consumerId);
       const enrichedRN = { ...rn, consumer };
@@ -95,10 +101,8 @@ export const createWasteStream = async (req, res) => {
       };
     }).sort((a, b) => b.score - a.score);
 
-    // Save generated matches
     matches.unshift(...newMatches);
 
-    // Generate predictive forecast for this stream
     const forecast = await generateWasteForecast(newWasteStream);
 
     return res.status(201).json({
@@ -116,10 +120,6 @@ export const getWasteStreamById = async (req, res) => {
   try {
     const { id } = req.params;
     const stream = wasteStreams.find(w => w.id === id) || wasteStreams[0];
-    if (!stream) {
-      return res.status(404).json({ error: 'Waste stream not found' });
-    }
-
     const producer = SEED_USERS.find(u => u.id === stream.producerId) || SEED_USERS[0];
     const enrichedStream = { ...stream, producer };
 

@@ -15,6 +15,7 @@ export const DemoLoginPage = () => {
       navigate('/waste');
     } catch (err) {
       console.error(err);
+      navigate('/waste');
     }
   };
 
@@ -54,41 +55,41 @@ export const DemoLoginPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-parchment flex flex-col items-center justify-center p-4 md:p-8 selection:bg-kraft">
-      <div className="max-w-3xl w-full space-y-8 text-center">
+    <div className="min-h-screen bg-parchment flex flex-col items-center justify-center p-3 sm:p-6 selection:bg-kraft overflow-x-hidden">
+      <div className="max-w-3xl w-full space-y-6 sm:space-y-8 text-center">
         
         {/* Header */}
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-moss/10 text-moss font-mono text-xs font-semibold border border-moss/20">
-            <Recycle className="w-4 h-4 animate-spin-slow" />
+        <div className="space-y-2 sm:space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-moss/10 text-moss font-mono text-[11px] font-semibold border border-moss/20">
+            <Recycle className="w-3.5 h-3.5 animate-spin-slow" />
             Hackathon Judge Quick Access
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-loam tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-display font-bold text-loam tracking-tight">
             CircularSync <span className="text-moss italic font-normal">AI</span>
           </h1>
-          <p className="text-sm font-sans text-loam/80 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm font-sans text-loam/80 max-w-xl mx-auto leading-relaxed px-2">
             Select a persona below to explore the AI-powered circular economy platform in action. No credentials required.
           </p>
         </div>
 
         {/* Persona Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-left px-1">
           {personas.map((p) => {
             const Icon = p.icon;
             return (
-              <Card key={p.role} className="flex flex-col justify-between p-6 space-y-4 hover:border-moss transition-all">
-                <div className="space-y-3">
+              <Card key={p.role} className="flex flex-col justify-between p-4 sm:p-6 space-y-3 hover:border-moss transition-all">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <div className={`p-2.5 rounded-lg border ${p.color}`}>
-                      <Icon className="w-6 h-6" />
+                    <div className={`p-2 sm:p-2.5 rounded-lg border ${p.color}`}>
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-loam/60">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-loam/60">
                       {p.role}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="font-display font-bold text-xl text-loam">{p.title}</h3>
+                    <h3 className="font-display font-bold text-lg sm:text-xl text-loam">{p.title}</h3>
                     <div className="font-mono text-xs text-moss font-semibold">{p.subtitle}</div>
                   </div>
 
@@ -99,7 +100,7 @@ export const DemoLoginPage = () => {
 
                 <Button
                   variant="primary"
-                  className="w-full justify-between mt-2"
+                  className="w-full justify-between mt-2 py-2.5 text-xs font-mono font-bold active:scale-95 touch-manipulation"
                   disabled={loading}
                   onClick={() => handleDemoSelect(p.role)}
                 >
@@ -112,8 +113,8 @@ export const DemoLoginPage = () => {
         </div>
 
         {/* Footer info */}
-        <div className="pt-4 text-xs font-mono text-loam/50 flex items-center justify-center gap-4">
-          <span>Keyless Open-Meteo Weather API</span>
+        <div className="pt-2 text-[10px] font-mono text-loam/50 flex items-center justify-center gap-3">
+          <span>Open-Meteo API</span>
           <span>•</span>
           <span>D3 Force Network</span>
           <span>•</span>
