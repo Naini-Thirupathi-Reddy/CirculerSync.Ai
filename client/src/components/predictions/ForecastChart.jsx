@@ -10,24 +10,25 @@ import {
   Legend,
 } from 'recharts';
 
-export const ForecastChart = ({ data = [], forecastData, forecast }) => {
-  const points = (
+export const ForecastChart = ({ data, forecastData, forecast }) => {
+  const rawPoints = (
     forecastData?.predictedNext7Days ||
     forecastData?.dailyPoints ||
     forecastData?.forecastPoints ||
     forecast?.predictedNext7Days ||
-    (Array.isArray(data) && data.length > 0 ? data : null) || [
-      { day: 'Mon', date: '2026-08-07', predictedKg: 42, baselineKg: 40 },
-      { day: 'Tue', date: '2026-08-08', predictedKg: 44, baselineKg: 41 },
-      { day: 'Wed', date: '2026-08-09', predictedKg: 43, baselineKg: 40 },
-      { day: 'Thu', date: '2026-08-10', predictedKg: 46, baselineKg: 42 },
-      { day: 'Fri', date: '2026-08-11', predictedKg: 52, baselineKg: 45 },
-      { day: 'Sat', date: '2026-08-12', predictedKg: 68, baselineKg: 52 },
-      { day: 'Sun', date: '2026-08-13', predictedKg: 62, baselineKg: 48 },
-    ]
-  );
+    forecast?.dailyPoints ||
+    (Array.isArray(data) && data.length > 0 ? data : null)
+  ) || [
+    { day: 'Mon', date: '2026-08-07', predictedKg: 42, baselineKg: 40 },
+    { day: 'Tue', date: '2026-08-08', predictedKg: 44, baselineKg: 41 },
+    { day: 'Wed', date: '2026-08-09', predictedKg: 43, baselineKg: 40 },
+    { day: 'Thu', date: '2026-08-10', predictedKg: 46, baselineKg: 42 },
+    { day: 'Fri', date: '2026-08-11', predictedKg: 52, baselineKg: 45 },
+    { day: 'Sat', date: '2026-08-12', predictedKg: 68, baselineKg: 52 },
+    { day: 'Sun', date: '2026-08-13', predictedKg: 62, baselineKg: 48 },
+  ];
 
-  const chartData = points.map(item => ({
+  const chartData = rawPoints.map(item => ({
     date: item.day || (item.forDate ? item.forDate.slice(5) : item.date),
     predictedKg: item.predictedKg || 45,
     smaBaseKg: item.baselineKg || item.factors?.smaBaseKg || 40,
