@@ -12,50 +12,52 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const handleUnauthorized = () => {
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem('cs_user');
-      localStorage.removeItem('cs_jwt_token');
-    };
+    const handleUnauthorized = () => { setUser(null); setToken(null); localStorage.removeItem('cs_user'); localStorage.removeItem('cs_jwt_token'); };
     window.addEventListener('cs-unauthorized', handleUnauthorized);
     return () => window.removeEventListener('cs-unauthorized', handleUnauthorized);
   }, []);
 
+  const setSession = (tokenStr, userData) => {
+    setToken(tokenStr);
+    setUser(userData);
+    localStorage.setItem('cs_jwt_token', tokenStr);
+    localStorage.setItem('cs_user', JSON.stringify(userData));
+  };
+
   /**
-   * 1. Google OAuth & Gmail Verification Step
+   * Send real Google credential to backend for verification + OTP generation
    */
-  const googleLogin = async (gmailEmail) => {
+  const googleLogin = async (credentialOrEmail) => {
     setLoading(true);
     try {
-      const res = await api.post('/auth/google', { email: gmailEmail });
-      return res.data;
+      // If it's a long JWT string, it's a real Google credential
+      const isCredential = credentialOrEmail && credentialOrEmail.length > 100;
+      const payload = isCredential
+        ? { credential: credentialOrEmail }
+        : { email: credentialOrEmail };
+
+      const res = await api.post('/auth/google', payload);
+      return res.data; // { requiresOtp, email, demoOtp, ... }
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * 2. Verify 6-Digit OTP Step
+   * Verify 6-digit OTP and create session
    */
   const verifyOtp = async (email, otp) => {
     setLoading(true);
     try {
       const res = await api.post('/auth/verify-otp', { email, otp });
-      const { token, user } = res.data;
-      setToken(token);
-      setUser(user);
-      localStorage.setItem('cs_jwt_token', token);
-      localStorage.setItem('cs_user', JSON.stringify(user));
+      const { token: t, user: u } = res.data;
+      setSession(t, u);
       return res.data;
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * 3. Resend OTP Step
-   */
   const resendOtp = async (email) => {
     setLoading(true);
     try {
@@ -66,69 +68,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email) => {
-    return googleLogin(email);
-  };
-
-  const signup = async (userData) => {
-    return googleLogin(userData.email || 'sarah@greenbean.com');
-  };
-
   const demoLogin = async (role = 'PRODUCER') => {
     setLoading(true);
-    let userData = {
-      id: `demo-${role.toLowerCase()}`,
-      name: `Demo ${role}`,
-      email: `demo.${role.toLowerCase()}@circularsync.com`,
-      role,
-      orgName: `Demo ${role} Hub`,
-      address: 'New York, NY',
-    };
-    let tokenStr = `cs-jwt-token-demo-${role}`;
-
+    let userData = { id: `demo-${role.toLowerCase()}`, name: `Demo ${role}`, email: `demo.${role.toLowerCase()}@circularsync.com`, role, orgName: `Demo ${role} Hub` };
+    let tokenStr = `cs-demo-${role}`;
     try {
       const res = await api.post('/auth/demo-login', { role });
-      if (res.data && res.data.user) {
-        userData = res.data.user;
-        tokenStr = res.data.token || tokenStr;
-      }
-    } catch (err) {
-      console.warn('API fallback demoLogin:', err.message);
-    } finally {
-      setToken(tokenStr);
-      setUser(userData);
-      localStorage.setItem('cs_jwt_token', tokenStr);
-      localStorage.setItem('cs_user', JSON.stringify(userData));
-      setLoading(false);
-    }
+      if (res.data?.user) { userData = res.data.user; tokenStr = res.data.token || tokenStr; }
+    } catch (e) { console.warn(e.message); }
+    setSession(tokenStr, userData);
+    setLoading(false);
     return userData;
   };
 
   const switchRole = (newRole) => {
     if (!user) return;
-    const updatedUser = { ...user, role: newRole };
-    setUser(updatedUser);
-    localStorage.setItem('cs_user', JSON.stringify(updatedUser));
+    const updated = { ...user, role: newRole };
+    setUser(updated);
+    localStorage.setItem('cs_user', JSON.stringify(updated));
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
+    setUser(null); setToken(null);
     localStorage.removeItem('cs_jwt_token');
     localStorage.removeItem('cs_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, googleLogin, verifyOtp, resendOtp, signup, demoLogin, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, token, loading, googleLogin, verifyOtp, resendOtp, demoLogin, logout, switchRole, setSession }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
+  return ctx;
 };
