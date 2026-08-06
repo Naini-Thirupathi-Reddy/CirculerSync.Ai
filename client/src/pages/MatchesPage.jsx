@@ -125,34 +125,62 @@ export const MatchesPage = () => {
   const [searchParams] = useSearchParams();
   const wasteId = searchParams.get('wasteId');
 
-  const [matches, setMatches] = useState(PRODUCER_MATCHES);
+  const role = user?.role || 'PRODUCER';
+
+  const [matches, setMatches] = useState(() => {
+    const saved = localStorage.getItem(`cs_matches_${role}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    if (role === 'CONSUMER') return CONSUMER_MATCHES;
+    if (role === 'LOGISTICS') return LOGISTICS_MATCHES;
+    if (role === 'ADMIN') return [...PRODUCER_MATCHES, ...CONSUMER_MATCHES, ...LOGISTICS_MATCHES];
+    return PRODUCER_MATCHES;
+  });
+
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   const fetchMatches = async () => {
-    const role = user?.role || 'PRODUCER';
     let defaultSet = PRODUCER_MATCHES;
     if (role === 'CONSUMER') defaultSet = CONSUMER_MATCHES;
     else if (role === 'LOGISTICS') defaultSet = LOGISTICS_MATCHES;
     else if (role === 'ADMIN') defaultSet = [...PRODUCER_MATCHES, ...CONSUMER_MATCHES, ...LOGISTICS_MATCHES];
+
+    const saved = localStorage.getItem(`cs_matches_${role}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMatches(parsed);
+          return;
+        }
+      } catch (e) {}
+    }
 
     try {
       const url = wasteId ? `/matches?wasteId=${wasteId}` : '/matches/my';
       const res = await api.get(url);
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setMatches(res.data);
-      } else {
-        setMatches(defaultSet);
+        localStorage.setItem(`cs_matches_${role}`, JSON.stringify(res.data));
+        return;
       }
     } catch (err) {
-      setMatches(defaultSet);
+      console.warn('Using role-specific fallback matches');
     }
+
+    setMatches(defaultSet);
+    localStorage.setItem(`cs_matches_${role}`, JSON.stringify(defaultSet));
   };
 
   useEffect(() => {
     fetchMatches();
-  }, [wasteId, user?.role]);
+  }, [wasteId, role]);
 
   const handleOpenReasoning = (match) => {
     setSelectedMatch(match);
@@ -165,12 +193,14 @@ export const MatchesPage = () => {
     } catch (err) {
       console.warn(err);
     }
-    setMatches(prev => prev.map(m => m.id === matchId ? { ...m, status: 'ACCEPTED' } : m));
-    setToastMessage('Pickup requested');
+    setMatches(prev => {
+      const updated = prev.map(m => m.id === matchId ? { ...m, status: 'ACCEPTED' } : m);
+      localStorage.setItem(`cs_matches_${role}`, JSON.stringify(updated));
+      return updated;
+    });
+    setToastMessage('Match accepted! Status updated to ACCEPTED & DISPATCHED');
     setTimeout(() => setToastMessage(''), 4000);
   };
-
-  const roleName = user?.role || 'PRODUCER';
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -196,7 +226,7 @@ export const MatchesPage = () => {
 
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-moss/10 text-moss border border-moss/20 font-mono text-xs font-bold">
           <ShieldCheck className="w-4 h-4" />
-          <span>Viewing as: {roleName}</span>
+          <span>Viewing as: {role}</span>
         </div>
       </div>
 
