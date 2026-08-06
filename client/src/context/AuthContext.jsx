@@ -37,6 +37,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (gmailEmail = 'user@gmail.com', name = 'Google User') => {
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', { email: gmailEmail, name });
+      const { token, user } = res.data;
+      setToken(token);
+      setUser(user);
+      localStorage.setItem('cs_jwt_token', token);
+      localStorage.setItem('cs_user', JSON.stringify(user));
+      return user;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signup = async (userData) => {
     setLoading(true);
     try {
@@ -82,7 +97,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, demoLogin, logout, switchRole }}>
+    <AuthContext.Provider value={{ user, token, loading, login, googleLogin, signup, demoLogin, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
