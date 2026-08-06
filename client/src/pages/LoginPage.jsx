@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Recycle, ArrowRight, ShieldAlert, KeyRound } from 'lucide-react';
+import { Recycle, ShieldAlert, KeyRound } from 'lucide-react';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -19,31 +19,23 @@ export const LoginPage = () => {
     { role: 'ADMIN', email: 'admin@circularsync.com', name: 'Community Manager (Admin)' },
   ];
 
-  const handleQuickFill = (accEmail) => {
+  const handleQuickFill = async (accEmail) => {
     setEmail(accEmail);
     setPassword('demo1234');
+    await login(accEmail, 'demo1234');
+    navigate('/waste');
   };
 
   const handleGoogleSignIn = async () => {
-    try {
-      await googleLogin('user.gmail@gmail.com', 'Google User');
-      navigate('/waste');
-    } catch (err) {
-      setError('Google Sign-In failed');
-    }
+    await googleLogin('user.gmail@gmail.com', 'Google User');
+    navigate('/waste');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    try {
-      await login(email, password);
-      navigate('/waste');
-    } catch (err) {
-      // Fallback auto login for hackathon simplicity
-      await googleLogin(email || 'user@gmail.com', 'Demo User');
-      navigate('/waste');
-    }
+    await login(email || 'sarah@greenbean.com', password || 'demo1234');
+    navigate('/waste');
   };
 
   return (
@@ -127,7 +119,7 @@ export const LoginPage = () => {
           <div className="pt-3 border-t border-loam/10 space-y-2">
             <div className="flex items-center gap-1 text-[11px] font-mono font-bold uppercase text-loam/60">
               <KeyRound className="w-3.5 h-3.5 text-moss" />
-              <span>Pre-Seeded User Accounts (Password: demo1234):</span>
+              <span>Pre-Seeded User Accounts (Click to Fill & Sign In):</span>
             </div>
             <div className="grid grid-cols-1 gap-1.5 font-mono text-xs">
               {sampleAccounts.map((acc) => (
@@ -135,10 +127,10 @@ export const LoginPage = () => {
                   key={acc.email}
                   type="button"
                   onClick={() => handleQuickFill(acc.email)}
-                  className="w-full text-left p-2 rounded bg-parchment/70 hover:bg-mycelium border border-loam/10 flex items-center justify-between transition-colors"
+                  className="w-full text-left p-2.5 rounded bg-parchment/80 hover:bg-mycelium border border-loam/15 flex items-center justify-between transition-colors shadow-sm"
                 >
                   <span className="truncate text-loam font-sans font-medium">{acc.name}</span>
-                  <span className="text-[10px] text-moss font-bold underline shrink-0 pl-2">Fill</span>
+                  <span className="text-[10px] text-moss font-bold underline shrink-0 pl-2">Sign In</span>
                 </button>
               ))}
             </div>

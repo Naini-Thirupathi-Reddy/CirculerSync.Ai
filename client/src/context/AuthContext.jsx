@@ -24,31 +24,32 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email = 'sarah@greenbean.com', password = 'demo1234') => {
     setLoading(true);
+    const cleanEmail = email || 'sarah@greenbean.com';
     let userData = {
       id: `user-${Date.now()}`,
-      name: email.split('@')[0] || 'Demo User',
-      email,
+      name: cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Sarah Jenkins',
+      email: cleanEmail,
       role: 'PRODUCER',
-      orgName: `${email.split('@')[0]}'s Hub`,
+      orgName: cleanEmail.includes('@') ? `${cleanEmail.split('@')[0]}'s Bakery` : 'GreenBean Cafe & Bakery',
       address: 'New York, NY',
     };
-    let tokenStr = 'cs-jwt-token-demo';
+    let tokenStr = 'cs-jwt-token-authenticated';
 
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email: cleanEmail, password });
       if (res.data && res.data.user) {
         userData = res.data.user;
         tokenStr = res.data.token || tokenStr;
       }
     } catch (err) {
-      console.warn('API fallback login triggered:', err.message);
-    } finally {
-      setToken(tokenStr);
-      setUser(userData);
-      localStorage.setItem('cs_jwt_token', tokenStr);
-      localStorage.setItem('cs_user', JSON.stringify(userData));
-      setLoading(false);
+      console.warn('API fallback login:', err.message);
     }
+
+    setToken(tokenStr);
+    setUser(userData);
+    localStorage.setItem('cs_jwt_token', tokenStr);
+    localStorage.setItem('cs_user', JSON.stringify(userData));
+    setLoading(false);
     return userData;
   };
 
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }) => {
       orgName: `${name}'s Organic Hub`,
       address: 'New York, NY',
     };
-    let tokenStr = 'cs-jwt-token-google';
+    let tokenStr = 'cs-jwt-token-google-auth';
 
     try {
       const res = await api.post('/auth/google', { email: gmailEmail, name });
@@ -71,28 +72,28 @@ export const AuthProvider = ({ children }) => {
         tokenStr = res.data.token || tokenStr;
       }
     } catch (err) {
-      console.warn('API fallback Google login triggered:', err.message);
-    } finally {
-      setToken(tokenStr);
-      setUser(userData);
-      localStorage.setItem('cs_jwt_token', tokenStr);
-      localStorage.setItem('cs_user', JSON.stringify(userData));
-      setLoading(false);
+      console.warn('API fallback Google login:', err.message);
     }
+
+    setToken(tokenStr);
+    setUser(userData);
+    localStorage.setItem('cs_jwt_token', tokenStr);
+    localStorage.setItem('cs_user', JSON.stringify(userData));
+    setLoading(false);
     return userData;
   };
 
-  const signup = async (userDataInput) => {
+  const signup = async (userDataInput = {}) => {
     setLoading(true);
     let userData = {
       id: `user-${Date.now()}`,
-      name: userDataInput.name || 'User',
-      email: userDataInput.email || 'user@gmail.com',
+      name: userDataInput.name || 'Spoorthi',
+      email: userDataInput.email || 'spoorthireddy@gmail.com',
       role: userDataInput.role || 'PRODUCER',
-      orgName: userDataInput.orgName || userDataInput.name || 'Organic Hub',
-      address: userDataInput.address || 'New York, NY',
+      orgName: userDataInput.orgName || userDataInput.name || 'Spoors Hub',
+      address: userDataInput.address || 'Siddipet',
     };
-    let tokenStr = 'cs-jwt-token-signup';
+    let tokenStr = 'cs-jwt-token-signed-up';
 
     try {
       const res = await api.post('/auth/signup', userDataInput);
@@ -101,14 +102,14 @@ export const AuthProvider = ({ children }) => {
         tokenStr = res.data.token || tokenStr;
       }
     } catch (err) {
-      console.warn('API fallback signup triggered:', err.message);
-    } finally {
-      setToken(tokenStr);
-      setUser(userData);
-      localStorage.setItem('cs_jwt_token', tokenStr);
-      localStorage.setItem('cs_user', JSON.stringify(userData));
-      setLoading(false);
+      console.warn('API fallback signup:', err.message);
     }
+
+    setToken(tokenStr);
+    setUser(userData);
+    localStorage.setItem('cs_jwt_token', tokenStr);
+    localStorage.setItem('cs_user', JSON.stringify(userData));
+    setLoading(false);
     return userData;
   };
 
@@ -131,14 +132,14 @@ export const AuthProvider = ({ children }) => {
         tokenStr = res.data.token || tokenStr;
       }
     } catch (err) {
-      console.warn('API fallback demoLogin triggered:', err.message);
-    } finally {
-      setToken(tokenStr);
-      setUser(userData);
-      localStorage.setItem('cs_jwt_token', tokenStr);
-      localStorage.setItem('cs_user', JSON.stringify(userData));
-      setLoading(false);
+      console.warn('API fallback demoLogin:', err.message);
     }
+
+    setToken(tokenStr);
+    setUser(userData);
+    localStorage.setItem('cs_jwt_token', tokenStr);
+    localStorage.setItem('cs_user', JSON.stringify(userData));
+    setLoading(false);
     return userData;
   };
 
