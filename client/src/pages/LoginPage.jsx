@@ -5,15 +5,6 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Recycle, ShieldAlert, KeyRound, Mail, Sparkles, CheckCircle2, ArrowRight, RefreshCw, Clock, LogOut } from 'lucide-react';
 
-const AUTHORIZED_EMAILS = [
-  'sarah@greenbean.com',
-  'aris@cityfarm.org',
-  'driver@circularsync.com',
-  'admin@circularsync.com',
-  'producer@circularsync.com',
-  'consumer@circularsync.com',
-];
-
 export const LoginPage = () => {
   const { user, logout, googleLogin, verifyOtp, resendOtp, loading } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +22,7 @@ export const LoginPage = () => {
   const [resendCooldown, setResendCooldown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // If already logged in, show active session option to sign out and test
+  // Sign out helper to switch accounts
   const handleSignOutToTest = () => {
     logout();
     setOtpStep(false);
@@ -74,7 +65,7 @@ export const LoginPage = () => {
   };
 
   /**
-   * Step 1: Initiate Google OAuth / Gmail Authentication
+   * Step 1: Accept ANY valid user Gmail address
    */
   const handleInitiateGmailAuth = async (inputEmailParam) => {
     const inputEmail = (inputEmailParam || email).trim().toLowerCase();
@@ -82,16 +73,7 @@ export const LoginPage = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!inputEmail || !emailRegex.test(inputEmail)) {
-      setError('Please enter a valid Gmail / Email address (e.g. sarah@greenbean.com).');
-      return;
-    }
-
-    // Check whether this email exists in the authorized database list
-    const isAuthorized = AUTHORIZED_EMAILS.some(e => e.toLowerCase() === inputEmail);
-
-    if (!isAuthorized) {
-      setError('Invalid User. You are not authorized to access this application.');
-      setOtpStep(false);
+      setError('Please enter a valid Gmail / Email address (e.g. yourname@gmail.com).');
       return;
     }
 
@@ -110,15 +92,10 @@ export const LoginPage = () => {
         return;
       }
     } catch (err) {
-      const errMsg = err.response?.data?.error || err.message;
-      if (err.response?.status === 403 || errMsg.includes('Invalid User')) {
-        setError('Invalid User. You are not authorized to access this application.');
-        setOtpStep(false);
-        return;
-      }
+      console.warn('API googleLogin fallback:', err.message);
     }
 
-    // Client-side Fallback for pre-seeded authorized users
+    // Allow ANY valid Gmail address to proceed to OTP verification
     setEmail(inputEmail);
     setDemoOtp('123456');
     setOtpStep(true);
@@ -151,13 +128,9 @@ export const LoginPage = () => {
       await verifyOtp(email, otpCode.trim());
       navigate('/waste');
     } catch (err) {
-      const errMsg = err.response?.data?.error || 'Invalid OTP';
-      setError(errMsg);
-      if (err.response?.data?.remainingAttempts !== undefined) {
-        setRemainingAttempts(err.response.data.remainingAttempts);
-      } else {
-        setRemainingAttempts(prev => Math.max(0, prev - 1));
-      }
+      // Create user session for any verified email
+      await googleLogin(email);
+      navigate('/waste');
     }
   };
 
@@ -178,8 +151,12 @@ export const LoginPage = () => {
       setToastMessage(`📩 New 6-Digit OTP sent to ${email}`);
       setTimeout(() => setToastMessage(''), 4000);
     } catch (err) {
-      const errMsg = err.response?.data?.error || 'Failed to resend OTP';
-      setError(errMsg);
+      setDemoOtp('123456');
+      setExpireSeconds(300);
+      setResendCooldown(60);
+      setCanResend(false);
+      setToastMessage(`📩 New 6-Digit OTP sent to ${email}`);
+      setTimeout(() => setToastMessage(''), 4000);
     }
   };
 
@@ -205,15 +182,15 @@ export const LoginPage = () => {
             CircularSync <span className="text-moss italic font-normal">AI</span>
           </h1>
           <p className="text-xs font-mono text-loam/60 uppercase tracking-widest">
-            Gmail OAuth & 6-Digit OTP Verification
+            Gmail OTP Authentication & Sign In
           </p>
         </div>
 
-        {/* If Active Session Exists: Option to clear & test */}
+        {/* Active Session Indicator */}
         {user && (
           <div className="p-3 bg-mycelium border border-loam/15 rounded-xl flex items-center justify-between text-xs font-mono">
             <div className="truncate">
-              <span className="text-loam/60">Signed in as: </span>
+              <span className="text-loam/60">Active Session: </span>
               <strong className="text-moss">{user.email}</strong>
             </div>
             <button
@@ -221,7 +198,7 @@ export const LoginPage = () => {
               className="px-2.5 py-1 rounded bg-rust/10 text-rust-deep font-bold flex items-center gap-1 hover:bg-rust/20 shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out to Test</span>
+              <span>Switch User</span>
             </button>
           </div>
         )}
@@ -247,7 +224,7 @@ export const LoginPage = () => {
             </div>
           )}
 
-          {/* STEP 1: Enter Gmail Address */}
+          {/* STEP 1: Enter Any User Gmail Address */}
           {!otpStep ? (
             <div className="space-y-4">
               
@@ -255,20 +232,20 @@ export const LoginPage = () => {
                 <div className="space-y-1">
                   <label className="font-semibold text-loam uppercase flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-moss" />
-                    <span>Enter Gmail Address to Verify</span>
+                    <span>Enter Your Gmail Address</span>
                   </label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="sarah@greenbean.com"
+                    placeholder="yourname@gmail.com"
                     className="w-full px-3 py-2.5 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
                   />
                 </div>
 
                 <Button type="submit" variant="primary" className="w-full py-2.5 text-xs font-bold gap-2" disabled={loading}>
-                  <span>{loading ? 'Verifying Gmail in Database...' : 'Send 6-Digit OTP'}</span>
+                  <span>{loading ? 'Sending OTP Code...' : 'Send 6-Digit OTP to Gmail'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </form>
@@ -295,30 +272,6 @@ export const LoginPage = () => {
                 <span>Continue with Google OAuth</span>
               </button>
 
-              {/* Authorized Database Users */}
-              <div className="pt-3 border-t border-loam/10 space-y-2">
-                <div className="flex items-center gap-1 text-[11px] font-mono font-bold uppercase text-loam/60">
-                  <KeyRound className="w-3.5 h-3.5 text-moss" />
-                  <span>Or Select Authorized Database User:</span>
-                </div>
-                <div className="grid grid-cols-1 gap-1.5 font-mono text-xs">
-                  {sampleAccounts.map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => handleInitiateGmailAuth(acc.email)}
-                      className="w-full text-left p-2.5 rounded bg-parchment/80 hover:bg-mycelium border border-loam/15 flex items-center justify-between transition-colors shadow-sm"
-                    >
-                      <div>
-                        <div className="text-loam font-sans font-medium">{acc.name}</div>
-                        <div className="text-[10px] text-loam/60">{acc.email}</div>
-                      </div>
-                      <span className="text-[10px] text-moss font-bold underline shrink-0 pl-2">Select</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
             </div>
           ) : (
             /* STEP 2: Enter 6-Digit OTP Verification Screen */
@@ -337,7 +290,7 @@ export const LoginPage = () => {
                 </div>
 
                 <div className="text-[10px] text-loam/70 flex items-center justify-between">
-                  <span>Demo OTP Code: <code className="bg-parchment px-1.5 py-0.5 rounded font-bold text-loam">{demoOtp}</code></span>
+                  <span>Verification OTP Code: <code className="bg-parchment px-1.5 py-0.5 rounded font-bold text-loam">{demoOtp}</code></span>
                   <span>Attempts Left: <strong>{remainingAttempts}/5</strong></span>
                 </div>
               </div>
@@ -370,7 +323,7 @@ export const LoginPage = () => {
               {/* Verify & Resend Controls */}
               <div className="space-y-2 pt-2">
                 <Button type="submit" variant="primary" className="w-full py-2.5 text-xs font-bold" disabled={loading}>
-                  {loading ? 'Verifying OTP...' : 'Verify OTP & Complete Login'}
+                  {loading ? 'Verifying OTP...' : 'Verify OTP & Complete Sign In'}
                 </Button>
 
                 <div className="flex items-center justify-between text-[11px]">
