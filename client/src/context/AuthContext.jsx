@@ -11,10 +11,11 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('cs_jwt_token') || null);
   const [loading, setLoading] = useState(false);
 
+  // Auto-logout on 401
   useEffect(() => {
-    const handleUnauthorized = () => { setUser(null); setToken(null); localStorage.removeItem('cs_user'); localStorage.removeItem('cs_jwt_token'); };
-    window.addEventListener('cs-unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('cs-unauthorized', handleUnauthorized);
+    const handle = () => { setUser(null); setToken(null); localStorage.removeItem('cs_user'); localStorage.removeItem('cs_jwt_token'); };
+    window.addEventListener('cs-unauthorized', handle);
+    return () => window.removeEventListener('cs-unauthorized', handle);
   }, []);
 
   const setSession = (tokenStr, userData) => {
@@ -24,32 +25,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('cs_user', JSON.stringify(userData));
   };
 
-  /**
-   * Send real Google credential to backend for verification + OTP generation
-   */
-  const googleLogin = async (credentialOrEmail) => {
+  // ─── Sign Up ───────────────────────────────────────────
+  const signUp = async (name, email, password, orgName) => {
     setLoading(true);
     try {
-      // If it's a long JWT string, it's a real Google credential
-      const isCredential = credentialOrEmail && credentialOrEmail.length > 100;
-      const payload = isCredential
-        ? { credential: credentialOrEmail }
-        : { email: credentialOrEmail };
-
-      const res = await api.post('/auth/google', payload);
-      return res.data; // { requiresOtp, email, demoOtp, ... }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Verify 6-digit OTP and create session
-   */
-  const verifyOtp = async (email, otp) => {
-    setLoading(true);
-    try {
-      const res = await api.post('/auth/verify-otp', { email, otp });
+      const res = await api.post('/auth/signup', { name, email, password, orgName });
       const { token: t, user: u } = res.data;
       setSession(t, u);
       return res.data;
@@ -58,29 +38,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const resendOtp = async (email) => {
+  // ─── Sign In ───────────────────────────────────────────
+  const signIn = async (email, password) => {
     setLoading(true);
     try {
-      const res = await api.post('/auth/resend-otp', { email });
+      const res = await api.post('/auth/login', { email, password });
+      const { token: t, user: u } = res.data;
+      setSession(t, u);
       return res.data;
     } finally {
       setLoading(false);
     }
   };
 
+  // ─── Demo Login (judges) ──────────────────────────────
   const demoLogin = async (role = 'PRODUCER') => {
     setLoading(true);
-    let userData = { id: `demo-${role.toLowerCase()}`, name: `Demo ${role}`, email: `demo.${role.toLowerCase()}@circularsync.com`, role, orgName: `Demo ${role} Hub` };
-    let tokenStr = `cs-demo-${role}`;
     try {
       const res = await api.post('/auth/demo-login', { role });
-      if (res.data?.user) { userData = res.data.user; tokenStr = res.data.token || tokenStr; }
-    } catch (e) { console.warn(e.message); }
-    setSession(tokenStr, userData);
-    setLoading(false);
-    return userData;
+      const { token: t, user: u } = res.data;
+      setSession(t, u);
+      return res.data;
+    } catch (e) {
+      // Fallback if server unavailable
+      const userData = { id: `demo-${role.toLowerCase()}`, name: `Demo ${role}`, email: `demo.${role.toLowerCase()}@circularsync.com`, role, orgName: `Demo ${role} Hub` };
+      setSession(`cs-demo-${role}`, userData);
+      return { user: userData };
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ─── Switch Role ──────────────────────────────────────
   const switchRole = (newRole) => {
     if (!user) return;
     const updated = { ...user, role: newRole };
@@ -88,14 +77,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('cs_user', JSON.stringify(updated));
   };
 
+  // ─── Logout ───────────────────────────────────────────
   const logout = () => {
-    setUser(null); setToken(null);
+    setUser(null);
+    setToken(null);
     localStorage.removeItem('cs_jwt_token');
     localStorage.removeItem('cs_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, googleLogin, verifyOtp, resendOtp, demoLogin, logout, switchRole, setSession }}>
+    <AuthContext.Provider value={{ user, token, loading, signUp, signIn, demoLogin, logout, switchRole }}>
       {children}
     </AuthContext.Provider>
   );

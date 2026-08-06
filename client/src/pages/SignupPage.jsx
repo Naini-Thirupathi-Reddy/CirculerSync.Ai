@@ -3,191 +3,195 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Recycle, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Recycle, User, Mail, Lock, Building2, Eye, EyeOff, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 
 export const SignupPage = () => {
+  const { signUp, loading } = useAuth();
+  const navigate = useNavigate();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('PRODUCER');
+  const [confirmPw, setConfirmPw] = useState('');
   const [orgName, setOrgName] = useState('');
-  const [address, setAddress] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const { signup, googleLogin, loading } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    try {
-      await signup({
-        name: name || 'SPOORTHI',
-        email: email || 'spoorthireddy@gmail.com',
-        password: password || '12345',
-        role: role || 'PRODUCER',
-        orgName: orgName || name || 'spoors',
-        address: address || 'Siddipet',
-      });
-      navigate('/waste');
-    } catch (err) {
-      // Fallback auto login for seamless user experience
-      await googleLogin(email || 'spoorthireddy@gmail.com', name || 'SPOORTHI');
-      navigate('/waste');
-    }
-  };
 
-  const handleGoogleSignUp = async () => {
+    if (!name.trim()) { setError('Please enter your full name.'); return; }
+    if (!email.trim()) { setError('Please enter your email address.'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirmPw) { setError('Passwords do not match.'); return; }
+
     try {
-      await googleLogin('spoorthireddy@gmail.com', 'SPOORTHI');
+      await signUp(name.trim(), email.trim(), password, orgName.trim());
       navigate('/waste');
     } catch (err) {
-      setError('Google Sign-Up failed');
+      setError(err.response?.data?.error || 'Sign up failed. Please try again.');
     }
   };
 
   return (
     <div className="min-h-screen bg-parchment flex flex-col items-center justify-center p-4">
       <div className="max-w-lg w-full space-y-6">
-        
+
+        {/* Logo + Heading */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-moss text-parchment flex items-center justify-center mx-auto shadow-md">
-            <Recycle className="w-6 h-6" />
+          <div className="w-16 h-16 rounded-2xl bg-moss text-parchment flex items-center justify-center mx-auto shadow-lg">
+            <Recycle className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-display font-bold text-loam">
             CircularSync <span className="text-moss italic font-normal">AI</span>
           </h1>
           <p className="text-xs font-mono text-loam/60 uppercase tracking-widest">
-            Register your organization in the neighborhood loop
+            Create your account
           </p>
         </div>
 
-        <Card className="p-6 space-y-4">
-          
-          <button
-            type="button"
-            onClick={handleGoogleSignUp}
-            disabled={loading}
-            className="w-full py-2.5 px-4 rounded-md border border-loam/20 bg-parchment hover:bg-mycelium text-loam font-mono text-xs font-bold flex items-center justify-center gap-3 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-moss"
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            <span>Fast Register with Google / Gmail</span>
-          </button>
+        <Card className="p-6 space-y-5">
 
-          <div className="flex items-center my-2">
-            <div className="flex-1 border-t border-loam/15" />
-            <span className="px-3 text-[10px] font-mono uppercase text-loam/50 font-bold">OR</span>
-            <div className="flex-1 border-t border-loam/15" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 font-sans text-xs">
-            {error && (
-              <div className="p-3 rounded bg-rust/10 border border-rust/30 text-rust-deep font-mono flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-mono font-semibold text-loam uppercase">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="SPOORTHI"
-                  className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-mono font-semibold text-loam uppercase">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="spoorthireddy@gmail.com"
-                  className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
-                />
-              </div>
+          {/* Error banner */}
+          {error && (
+            <div className="p-3 rounded-lg bg-rust/10 border border-rust/30 text-rust-deep text-xs font-mono flex items-start gap-2 animate-in fade-in">
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="font-bold">{error}</span>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-mono font-semibold text-loam uppercase">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="•••••"
-                  className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-              <div className="space-y-1">
-                <label className="font-mono font-semibold text-loam uppercase">Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-xs font-mono focus:outline-none focus:ring-2 focus:ring-moss"
-                >
-                  <option value="PRODUCER">Waste Producer (Cafe/Restaurant/Retailer)</option>
-                  <option value="CONSUMER">Resource Consumer (Urban Farm/Mushroom Grower)</option>
-                  <option value="LOGISTICS">Logistics Partner (Driver)</option>
-                  <option value="ADMIN">Community Manager (Admin)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-mono font-semibold text-loam uppercase">Organization Name</label>
+            {/* Name */}
+            <div className="space-y-1.5">
+              <label htmlFor="signup-name" className="text-xs font-mono font-semibold text-loam uppercase flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-moss" /> Full Name
+              </label>
               <input
+                id="signup-name"
+                type="text"
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full px-3 py-2.5 rounded-lg bg-parchment border border-loam/20 text-loam text-sm font-mono placeholder:text-loam/40 focus:outline-none focus:ring-2 focus:ring-moss focus:border-moss transition-all"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label htmlFor="signup-email" className="text-xs font-mono font-semibold text-loam uppercase flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-moss" /> Email Address
+              </label>
+              <input
+                id="signup-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2.5 rounded-lg bg-parchment border border-loam/20 text-loam text-sm font-mono placeholder:text-loam/40 focus:outline-none focus:ring-2 focus:ring-moss focus:border-moss transition-all"
+              />
+            </div>
+
+            {/* Password fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="signup-password" className="text-xs font-mono font-semibold text-loam uppercase flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-moss" /> Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="signup-password"
+                    type={showPw ? 'text' : 'password'}
+                    required
+                    autoComplete="new-password"
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-3 py-2.5 pr-10 rounded-lg bg-parchment border border-loam/20 text-loam text-sm font-mono placeholder:text-loam/40 focus:outline-none focus:ring-2 focus:ring-moss transition-all"
+                  />
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-loam/50 hover:text-loam" tabIndex={-1}>
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="signup-confirm" className="text-xs font-mono font-semibold text-loam uppercase flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-moss" /> Confirm Password
+                </label>
+                <input
+                  id="signup-confirm"
+                  type={showPw ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Repeat password"
+                  className="w-full px-3 py-2.5 rounded-lg bg-parchment border border-loam/20 text-loam text-sm font-mono placeholder:text-loam/40 focus:outline-none focus:ring-2 focus:ring-moss transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Org name (optional) */}
+            <div className="space-y-1.5">
+              <label htmlFor="signup-org" className="text-xs font-mono font-semibold text-loam uppercase flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-moss" /> Organization Name <span className="text-loam/40">(optional)</span>
+              </label>
+              <input
+                id="signup-org"
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                placeholder="spoors"
-                className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
+                placeholder="Your business or org name"
+                className="w-full px-3 py-2.5 rounded-lg bg-parchment border border-loam/20 text-loam text-sm font-mono placeholder:text-loam/40 focus:outline-none focus:ring-2 focus:ring-moss transition-all"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="font-mono font-semibold text-loam uppercase">Business Address</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="siddipet"
-                className="w-full px-3 py-2 rounded-md bg-parchment border border-loam/20 text-loam text-sm focus:outline-none focus:ring-2 focus:ring-moss font-mono"
-              />
-            </div>
-
-            <Button type="submit" variant="primary" className="w-full text-sm py-2.5 mt-2" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account'}
+            {/* Submit */}
+            <Button type="submit" variant="primary" className="w-full py-2.5 text-sm font-bold gap-2 mt-2" disabled={loading}>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-parchment/30 border-t-parchment rounded-full animate-spin" />
+                  Creating Account…
+                </span>
+              ) : (
+                <>Create Account <ArrowRight className="w-4 h-4" /></>
+              )}
             </Button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-loam/10 text-center space-y-2 font-mono text-xs">
-            <div>
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-loam/10" />
+            <span className="text-[10px] font-mono text-loam/40 uppercase">or</span>
+            <div className="flex-1 border-t border-loam/10" />
+          </div>
+
+          {/* Links */}
+          <div className="space-y-3 text-center font-mono text-xs">
+            <p className="text-loam/60">
               Already have an account?{' '}
               <Link to="/login" className="text-moss font-bold hover:underline">
                 Sign In
               </Link>
-            </div>
-            <div>
-              <Link to="/demo-login" className="text-kraft-deep hover:underline">
-                Or launch 1-Click Judge Demo Login
+            </p>
+            <div className="pt-2 border-t border-loam/10">
+              <Link to="/demo-login" className="text-kraft-deep hover:underline font-bold flex items-center justify-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> Judge Quick Access (Demo)
               </Link>
             </div>
           </div>
+
         </Card>
 
+        <p className="text-center text-[10px] font-mono text-loam/40 px-4">
+          🔒 Passwords are hashed with bcrypt (12 rounds). Sessions use JWT tokens (24h expiry).
+        </p>
       </div>
     </div>
   );
