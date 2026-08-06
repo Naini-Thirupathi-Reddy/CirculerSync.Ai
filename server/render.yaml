@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: circularsync-backend
+    env: node
+    rootDir: server
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production

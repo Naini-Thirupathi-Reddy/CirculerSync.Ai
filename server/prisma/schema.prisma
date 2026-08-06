@@ -1,0 +1,148 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          Role
+  orgName       String?
+  address       String?
+  lat           Float?
+  lng           Float?
+  phone         String?
+  createdAt     DateTime @default(now())
+  wasteStreams  WasteStream[]
+  resourceNeeds ResourceNeed[]
+  pickupJobs    PickupJob[]     @relation("DriverJobs")
+  notifications Notification[]
+}
+
+enum Role {
+  PRODUCER
+  CONSUMER
+  LOGISTICS
+  ADMIN
+}
+
+model WasteStream {
+  id             String   @id @default(uuid())
+  producerId     String
+  producer       User     @relation(fields: [producerId], references: [id])
+  rawDescription String
+  wasteType      String
+  subtype        String
+  quantity       Float
+  unit           String
+  frequency      String
+  qualityGrade   String
+  photoUrl       String?
+  pickupReadyAt  DateTime
+  status         WasteStatus @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  matches        Match[]
+  forecasts      ForecastCache[]
+}
+
+enum WasteStatus {
+  ACTIVE
+  MATCHED
+  COMPLETED
+  EXPIRED
+}
+
+model ResourceNeed {
+  id             String   @id @default(uuid())
+  consumerId     String
+  consumer       User     @relation(fields: [consumerId], references: [id])
+  acceptedTypes  String[]
+  maxRadiusKm    Float    @default(10)
+  minVolume      Float
+  needWindowFrom DateTime
+  needWindowTo   DateTime
+  createdAt      DateTime @default(now())
+  matches        Match[]
+}
+
+model Match {
+  id                String   @id @default(uuid())
+  wasteStreamId     String
+  wasteStream       WasteStream  @relation(fields: [wasteStreamId], references: [id])
+  resourceNeedId    String
+  resourceNeed      ResourceNeed @relation(fields: [resourceNeedId], references: [id])
+  score             Float
+  compatibilityScore Float
+  volumeScore       Float
+  distanceScore     Float
+  timingScore       Float
+  reasoning         String
+  status            MatchStatus @default(PROPOSED)
+  createdAt         DateTime @default(now())
+  pickupJob         PickupJob?
+  impactLog         ImpactLog?
+}
+
+enum MatchStatus {
+  PROPOSED
+  ACCEPTED
+  REJECTED
+}
+
+model PickupJob {
+  id            String   @id @default(uuid())
+  matchId       String   @unique
+  match         Match    @relation(fields: [matchId], references: [id])
+  driverId      String?
+  driver        User?    @relation("DriverJobs", fields: [driverId], references: [id])
+  status        JobStatus @default(PENDING)
+  scheduledDate DateTime
+  routeOrder    Int?
+  estimatedTime DateTime?
+  createdAt     DateTime @default(now())
+}
+
+enum JobStatus {
+  PENDING
+  PICKED_UP
+  DELIVERED
+}
+
+model ImpactLog {
+  id                 String   @id @default(uuid())
+  matchId            String   @unique
+  match              Match    @relation(fields: [matchId], references: [id])
+  co2SavedKg         Float
+  waterSavedL        Float
+  landfillDivertedKg Float
+  producerSavings    Float
+  consumerSavings    Float
+  createdAt          DateTime @default(now())
+}
+
+model ForecastCache {
+  id            String   @id @default(uuid())
+  wasteStreamId String
+  wasteStream   WasteStream @relation(fields: [wasteStreamId], references: [id])
+  forDate       DateTime
+  predictedKg   Float
+  factors       Json
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

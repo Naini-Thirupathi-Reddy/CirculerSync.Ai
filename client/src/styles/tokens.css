@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-parchment:   #F3EEE3; /* app background — warm paper, not white */
+  --color-mycelium:    #E4DCC8; /* card/panel surface, one step off background */
+  --color-loam:        #241B14; /* primary text + dark-mode base */
+  --color-moss:        #5C6E45; /* primary brand / action color */
+  --color-moss-deep:   #3F4D2F; /* moss text on light bg — meets WCAG AA */
+  --color-kraft:       #C79A5C; /* secondary accent — badges, highlights */
+  --color-kraft-deep:  #9C7239; /* kraft text on light bg */
+  --color-rust:        #A4502E; /* tertiary — alerts, CO2 emphasis, urgency */
+  --color-rust-deep:   #7A3A20;
+}
+
+[data-theme="dark"] {
+  --color-parchment:   #1D1610;
+  --color-mycelium:    #2A2016;
+  --color-loam:        #F3EEE3;
+  --color-moss:        #8AA36C;
+  --color-kraft:       #DBB27C;
+  --color-rust:        #C97350;
+}
+
+/* Typography resets and baseline styles */
+body {
+  background-color: var(--color-parchment);
+  color: var(--color-loam);
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Fraunces', serif;
+}
+
+code, pre, .font-mono-data {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Custom Focus Ring for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-moss);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-parchment);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-mycelium);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-kraft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
