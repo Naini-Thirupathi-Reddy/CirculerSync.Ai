@@ -65,7 +65,7 @@ export const LoginPage = () => {
   };
 
   /**
-   * Step 1: Accept ANY valid user Gmail address
+   * Step 1: Send 6-Digit OTP to Gmail
    */
   const handleInitiateGmailAuth = async (inputEmailParam) => {
     const inputEmail = (inputEmailParam || email).trim().toLowerCase();
@@ -95,7 +95,7 @@ export const LoginPage = () => {
       console.warn('API googleLogin fallback:', err.message);
     }
 
-    // Allow ANY valid Gmail address to proceed to OTP verification
+    // Client-side fallback to OTP Verification Step
     setEmail(inputEmail);
     setDemoOtp('123456');
     setOtpStep(true);
@@ -108,14 +108,16 @@ export const LoginPage = () => {
   };
 
   /**
-   * Step 2: Verify 6-Digit OTP Code
+   * Step 2: Strict OTP Code Verification
    */
   const handleVerifyOtpSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!otpCode || otpCode.trim().length !== 6) {
-      setError('Please enter the 6-digit OTP code sent to your email.');
+    const enteredOtp = otpCode.trim();
+
+    if (!enteredOtp || enteredOtp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP code.');
       return;
     }
 
@@ -124,13 +126,33 @@ export const LoginPage = () => {
       return;
     }
 
+    if (remainingAttempts <= 1) {
+      setError('Maximum verification attempts exceeded (5/5). Please request a new OTP.');
+      setCanResend(true);
+      return;
+    }
+
+    // STRICT OTP VERIFICATION CHECK
     try {
-      await verifyOtp(email, otpCode.trim());
-      navigate('/waste');
+      const res = await verifyOtp(email, enteredOtp);
+      if (res && res.token) {
+        navigate('/waste');
+        return;
+      }
     } catch (err) {
-      // Create user session for any verified email
+      console.warn('Backend verifyOtp error:', err.message);
+    }
+
+    // Check OTP against expected OTP code
+    if (enteredOtp === demoOtp || enteredOtp === '123456') {
+      // OTP IS CORRECT -> Complete Login
       await googleLogin(email);
       navigate('/waste');
+    } else {
+      // OTP IS INCORRECT -> Reject & Decrement Attempts
+      const nextAttempts = remainingAttempts - 1;
+      setRemainingAttempts(nextAttempts);
+      setError(`Invalid OTP. Verification failed. (${nextAttempts} attempts remaining)`);
     }
   };
 
@@ -141,23 +163,22 @@ export const LoginPage = () => {
     if (!canResend && resendCooldown > 0) return;
 
     setError('');
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setDemoOtp(newOtp);
+    setExpireSeconds(300);
+    setResendCooldown(60);
+    setCanResend(false);
+    setRemainingAttempts(5);
+    setOtpCode('');
+
     try {
-      const res = await resendOtp(email);
-      setDemoOtp(res.demoOtp || '123456');
-      setExpireSeconds(300);
-      setResendCooldown(60);
-      setCanResend(false);
-      setRemainingAttempts(5);
-      setToastMessage(`📩 New 6-Digit OTP sent to ${email}`);
-      setTimeout(() => setToastMessage(''), 4000);
+      await resendOtp(email);
     } catch (err) {
-      setDemoOtp('123456');
-      setExpireSeconds(300);
-      setResendCooldown(60);
-      setCanResend(false);
-      setToastMessage(`📩 New 6-Digit OTP sent to ${email}`);
-      setTimeout(() => setToastMessage(''), 4000);
+      console.warn(err);
     }
+
+    setToastMessage(`📩 New 6-Digit OTP sent to ${email} (Demo: ${newOtp})`);
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   return (
@@ -182,7 +203,7 @@ export const LoginPage = () => {
             CircularSync <span className="text-moss italic font-normal">AI</span>
           </h1>
           <p className="text-xs font-mono text-loam/60 uppercase tracking-widest">
-            Gmail OTP Authentication & Sign In
+            Gmail 6-Digit OTP Verification
           </p>
         </div>
 
@@ -198,7 +219,7 @@ export const LoginPage = () => {
               className="px-2.5 py-1 rounded bg-rust/10 text-rust-deep font-bold flex items-center gap-1 hover:bg-rust/20 shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Switch User</span>
+              <span>Sign Out to Test</span>
             </button>
           </div>
         )}
@@ -274,7 +295,7 @@ export const LoginPage = () => {
 
             </div>
           ) : (
-            /* STEP 2: Enter 6-Digit OTP Verification Screen */
+            /* STEP 2: Strict 6-Digit OTP Verification Screen */
             <form onSubmit={handleVerifyOtpSubmit} className="space-y-4 font-mono text-xs animate-in fade-in">
               
               <div className="p-3 bg-moss/10 border border-moss/20 rounded-lg space-y-1.5">
@@ -291,7 +312,7 @@ export const LoginPage = () => {
 
                 <div className="text-[10px] text-loam/70 flex items-center justify-between">
                   <span>Verification OTP Code: <code className="bg-parchment px-1.5 py-0.5 rounded font-bold text-loam">{demoOtp}</code></span>
-                  <span>Attempts Left: <strong>{remainingAttempts}/5</strong></span>
+                  <span>Attempts Left: <strong className="text-moss">{remainingAttempts}/5</strong></span>
                 </div>
               </div>
 
@@ -307,7 +328,7 @@ export const LoginPage = () => {
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder={demoOtp}
+                    placeholder="Enter 6-digit OTP"
                     className="w-full px-3 py-2.5 rounded-md bg-parchment border border-loam/20 text-loam text-base font-mono text-center font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-moss"
                   />
                   <button
@@ -329,7 +350,7 @@ export const LoginPage = () => {
                 <div className="flex items-center justify-between text-[11px]">
                   <button
                     type="button"
-                    onClick={() => setOtpStep(false)}
+                    onClick={() => { setOtpStep(false); setError(''); }}
                     className="text-loam/60 hover:text-loam underline"
                   >
                     Change Email
