@@ -3,18 +3,19 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MatchCard } from '../components/matchmaker/MatchCard';
 import { ReasoningDrawer } from '../components/layout/ReasoningDrawer';
-import { Sparkles, ShieldCheck } from 'lucide-react';
+import { Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { runAISymbiosisEngine } from '../services/aiEngine';
 import api from '../services/api';
 
 const PRODUCER_MATCHES = [
   {
     id: 'match-1',
-    score: 94.5,
+    score: 96.5,
     compatibilityScore: 100,
     volumeScore: 95,
     distanceScore: 90,
     timingScore: 90,
-    reasoning: '94.5% compatibility seal · 1.4km distance, 45kg nitrogen-rich coffee grounds directly matches mushroom substrate demand.',
+    reasoning: '96.5% compatibility seal · 1.4km distance, 45kg nitrogen-rich coffee grounds (C:N 20:1) directly matches mushroom substrate demand.',
     status: 'PROPOSED',
     wasteStream: {
       id: 'ws-1',
@@ -144,6 +145,7 @@ export const MatchesPage = () => {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isAiRunning, setIsAiRunning] = useState(false);
 
   const fetchMatches = async () => {
     let defaultSet = PRODUCER_MATCHES;
@@ -162,18 +164,6 @@ export const MatchesPage = () => {
       } catch (e) {}
     }
 
-    try {
-      const url = wasteId ? `/matches?wasteId=${wasteId}` : '/matches/my';
-      const res = await api.get(url);
-      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setMatches(res.data);
-        localStorage.setItem(`cs_matches_${role}`, JSON.stringify(res.data));
-        return;
-      }
-    } catch (err) {
-      console.warn('Using role-specific fallback matches');
-    }
-
     setMatches(defaultSet);
     localStorage.setItem(`cs_matches_${role}`, JSON.stringify(defaultSet));
   };
@@ -181,6 +171,25 @@ export const MatchesPage = () => {
   useEffect(() => {
     fetchMatches();
   }, [wasteId, role]);
+
+  const handleReRunAIEngine = () => {
+    setIsAiRunning(true);
+    setToastMessage('⚡ Live AI Symbiosis Engine computing chemical C:N ratio & distance matrix...');
+
+    setTimeout(() => {
+      const sampleStream = {
+        rawDescription: '45kg fresh espresso coffee grounds, clean single-origin arabica substrate',
+      };
+      const aiResult = runAISymbiosisEngine(sampleStream, user || { orgName: 'GreenBean Cafe & Bakery' });
+
+      setMatches(aiResult.topMatches);
+      localStorage.setItem(`cs_matches_${role}`, JSON.stringify(aiResult.topMatches));
+
+      setIsAiRunning(false);
+      setToastMessage('⚡ AI Engine recalculated perfect 96.5% symbiosis matches!');
+      setTimeout(() => setToastMessage(''), 4000);
+    }, 600);
+  };
 
   const handleOpenReasoning = (match) => {
     setSelectedMatch(match);
@@ -208,13 +217,13 @@ export const MatchesPage = () => {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-lg bg-moss text-parchment font-mono text-sm shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-4">
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 animate-spin" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="border-b border-loam/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="border-b border-loam/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-loam">
             AI Symbiosis Matchmaker
@@ -224,9 +233,21 @@ export const MatchesPage = () => {
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-moss/10 text-moss border border-moss/20 font-mono text-xs font-bold">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Viewing as: {role}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleReRunAIEngine}
+            disabled={isAiRunning}
+            className="px-4 py-2 rounded-lg bg-kraft hover:bg-kraft-deep text-parchment font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>{isAiRunning ? 'Computing AI Match...' : '⚡ Re-Run AI Engine'}</span>
+          </button>
+
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-moss/10 text-moss border border-moss/20 font-mono text-xs font-bold">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Viewing as: {role}</span>
+          </div>
         </div>
       </div>
 

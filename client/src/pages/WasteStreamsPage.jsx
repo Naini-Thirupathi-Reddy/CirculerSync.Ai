@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { WasteCard } from '../components/waste/WasteCard';
 import { WasteForm } from '../components/waste/WasteForm';
 import { Button } from '../components/ui/Button';
-import { Plus, Recycle, Filter, Sparkles, X } from 'lucide-react';
+import { Plus, Recycle, Filter, Sparkles, X, Zap } from 'lucide-react';
+import { runAISymbiosisEngine } from '../services/aiEngine';
 import api from '../services/api';
 
 const DEFAULT_STREAMS = [
@@ -101,6 +102,7 @@ export const WasteStreamsPage = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [filterType, setFilterType] = useState('ALL');
   const [toastMessage, setToastMessage] = useState('');
+  const [isMatching, setIsMatching] = useState(false);
 
   const fetchStreams = async () => {
     try {
@@ -119,12 +121,34 @@ export const WasteStreamsPage = () => {
     fetchStreams();
   }, [user]);
 
+  const handleRunAIEngine = () => {
+    setIsMatching(true);
+    setToastMessage('⚡ AI Engine analyzing C:N ratios, moisture & geospatial proximity...');
+
+    setTimeout(() => {
+      const activeStream = wasteStreams[0] || DEFAULT_STREAMS[0];
+      const aiResult = runAISymbiosisEngine(activeStream, user || { orgName: 'GreenBean Cafe & Bakery' });
+
+      // Save generated AI matches to persistent store
+      const role = user?.role || 'PRODUCER';
+      localStorage.setItem(`cs_matches_${role}`, JSON.stringify(aiResult.topMatches));
+
+      setIsMatching(false);
+      setToastMessage('⚡ Live AI Symbiosis Engine executed! Navigating to matches...');
+
+      setTimeout(() => {
+        navigate('/matches');
+      }, 1000);
+    }, 800);
+  };
+
   const handleCreated = (data) => {
     setShowLogModal(false);
-    setToastMessage('Waste stream logged successfully');
+    
+    // Run AI Engine on the newly logged stream automatically
     const newStream = data?.wasteStream || {
       id: `ws-${Date.now()}`,
-      rawDescription: '45kg organic kitchen waste',
+      rawDescription: '45kg organic espresso grounds',
       wasteType: 'ORGANIC',
       quantity: 45,
       unit: 'kg',
@@ -132,7 +156,15 @@ export const WasteStreamsPage = () => {
       status: 'ACTIVE',
       producer: { orgName: user?.orgName || 'GreenBean Cafe' },
     };
+
     setWasteStreams(prev => [newStream, ...prev]);
+
+    // Run AI Matchmaker on new stream
+    const aiResult = runAISymbiosisEngine(newStream, user || { orgName: user?.orgName || 'GreenBean Cafe' });
+    const role = user?.role || 'PRODUCER';
+    localStorage.setItem(`cs_matches_${role}`, JSON.stringify(aiResult.topMatches));
+
+    setToastMessage('⚡ Stream logged & AI matches generated!');
     setTimeout(() => setToastMessage(''), 4000);
   };
 
@@ -156,7 +188,7 @@ export const WasteStreamsPage = () => {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-lg bg-moss text-parchment font-mono text-sm shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-4">
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 animate-spin" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -172,14 +204,26 @@ export const WasteStreamsPage = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={() => setShowLogModal(true)}
-          className="gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Log waste stream</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleRunAIEngine}
+            disabled={isMatching}
+            className="px-4 py-2 rounded-lg bg-kraft hover:bg-kraft-deep text-parchment font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>{isMatching ? 'Running AI Engine...' : '⚡ Run AI Matchmaker'}</span>
+          </button>
+
+          <Button
+            variant="primary"
+            onClick={() => setShowLogModal(true)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Log waste stream</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -209,7 +253,9 @@ export const WasteStreamsPage = () => {
           <WasteCard
             key={ws.id}
             wasteStream={ws}
-            onViewMatches={(s) => navigate(`/matches?wasteId=${s.id}`)}
+            onViewMatches={(s) => {
+              handleRunAIEngine();
+            }}
             onDelete={handleDelete}
           />
         ))}
